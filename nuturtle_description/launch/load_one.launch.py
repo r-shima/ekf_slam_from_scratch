@@ -4,7 +4,7 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument
 from launch.actions import Shutdown
 from launch.conditions import LaunchConfigurationEquals
-from launch.substitutions import Command, PathJoinSubstitution
+from launch.substitutions import Command, PathJoinSubstitution, LaunchConfiguration
 
 from launch_ros.actions import Node
 from launch_ros.substitutions import ExecutableInPackage, FindPackageShare
@@ -30,6 +30,13 @@ def generate_launch_description():
                               'turtlebot3_burger.urdf.xacro'),
             description='Absolute path to robot urdf file'
         ),
+        DeclareLaunchArgument(
+            name='color',
+            default_value='purple',
+            choices=['purple', 'black', 'dark', 'light_black', 'blue', 'green', 
+                    'grey', 'orange', 'brown', 'red', 'white'],
+            description='Color of the robot. Default is purple.'
+        ),
         Node(
             package='joint_state_publisher', 
             executable='joint_state_publisher', 
@@ -44,7 +51,8 @@ def generate_launch_description():
                 Command([ExecutableInPackage("xacro", "xacro"), " ",
                          PathJoinSubstitution(
                         [FindPackageShare("nuturtle_description"), 
-                        "urdf/turtlebot3_burger.urdf.xacro"])])}],
+                        "urdf/turtlebot3_burger.urdf.xacro"]),
+                        " color:=", LaunchConfiguration('color')])}],
             on_exit=Shutdown()
         ),
         Node(
