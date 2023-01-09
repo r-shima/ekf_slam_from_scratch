@@ -25,12 +25,6 @@ def generate_launch_description():
             description='Flag to enable joint_state_publisher'
         ),
         DeclareLaunchArgument(
-            name='model', 
-            default_value=str(get_package_share_path('nuturtle_description') /
-                              'turtlebot3_burger.urdf.xacro'),
-            description='Absolute path to robot urdf file'
-        ),
-        DeclareLaunchArgument(
             name='color',
             default_value='purple',
             choices=['purple', 'red', 'green', 'blue'],
