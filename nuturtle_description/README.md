@@ -1,5 +1,5 @@
 # Nuturtle  Description
-URDF files for Nuturtle <Name Your Robot>
+URDF files for Nuturtle Herbert
 * `ros2 launch nuturtle_description load_one.launch.py` to see the robot in rviz.
 * `ros2 launch nuturtle_description load_all.launch.xml` to see four copies of the robot in rviz.
 ![](images/rviz.png)
