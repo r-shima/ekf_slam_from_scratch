@@ -1,5 +1,3 @@
-from ament_index_python.packages import get_package_share_path
-
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, Shutdown, SetLaunchConfiguration
 from launch.conditions import LaunchConfigurationEquals
@@ -32,9 +30,9 @@ def generate_launch_description():
         ),
         SetLaunchConfiguration(name='rvizconfig',
                                value=[FindPackageShare('nuturtle_description'),
-                               TextSubstitution(text='/config/basic_'),
-                               LaunchConfiguration('color'),
-                               TextSubstitution(text='.rviz')]),
+                                      TextSubstitution(text='/config/basic_'),
+                                      LaunchConfiguration('color'),
+                                      TextSubstitution(text='.rviz')]),
         Node(
             package='joint_state_publisher',
             namespace=LaunchConfiguration('color'),
@@ -52,7 +50,7 @@ def generate_launch_description():
                  Command([ExecutableInPackage("xacro", "xacro"), " ",
                           PathJoinSubstitution(
                          [FindPackageShare("nuturtle_description"),
-                         "urdf/turtlebot3_burger.urdf.xacro"]),
+                          "urdf/turtlebot3_burger.urdf.xacro"]),
                          " color:=", LaunchConfiguration('color')])}],
             on_exit=Shutdown()
         ),
@@ -64,7 +62,7 @@ def generate_launch_description():
             output='screen',
             arguments=['-d', PathJoinSubstitution(
                             [FindPackageShare('nuturtle_description'),
-                            LaunchConfiguration('rvizconfig')])],
+                             LaunchConfiguration('rvizconfig')])],
             condition=LaunchConfigurationEquals('use_rviz', 'true'),
             on_exit=Shutdown()
         )

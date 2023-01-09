@@ -5,7 +5,6 @@
   <version>0.0.4</version>
   <description>This package displays multiple turtlebot3 models in RViz, each appearing with a different color. It also allows you to change the physical properties of the robot by editing a yaml file.</description>
   <maintainer email="rintarohshima2023@u.northwestern.edu">Rintaroh Shima</maintainer>
-  <author email="rintarohshima2023@u.northwestern.edu">Rintaroh Shima</author>
   <license>APLv2</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
