@@ -62,11 +62,6 @@ def generate_launch_description():
                          " color:=", LaunchConfiguration('color')])}],
             on_exit=Shutdown()
         ),
-        # SetLaunchConfiguration(name='rvizconfig',
-        #                        value=[FindPackageShare('nuturtle_description'),
-        #                        TextSubstitution(text='config/basic_'),
-        #                        LaunchConfiguration('color'),
-        #                        TextSubstitution(text='.rviz')]),
         Node(
             package='rviz2',
             namespace=LaunchConfiguration('color'),
