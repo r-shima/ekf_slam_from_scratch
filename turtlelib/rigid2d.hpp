@@ -4,7 +4,8 @@
 /// \brief Two-dimensional rigid body transformations.
 
 
-#include<iosfwd> // contains forward definitions for iostream objects
+#include <iosfwd> // contains forward definitions for iostream objects
+#include <cmath>
 
 namespace turtlelib
 {
@@ -103,6 +104,26 @@ namespace turtlelib
     /// When you call std::peek() it will wait for there to be at least one character in the buffer (e.g., the user types a character)
     /// HINT: this function can be written in under 20 lines and uses only std::peek(), std::get(), istream::operator>>() and a little logic
     std::istream & operator>>(std::istream & is, Vector2D & v);
+
+    struct Twist2D
+    {
+        /// \brief the angular velocity
+        double w = 0.0;
+        /// \brief the x component of linear velocity
+        double x = 0.0;
+        /// \brief the y component of linear velocity
+        double y = 0.0;
+    };
+
+    /// \brief output a 2 dimensional twist as [wcomponent xcomponent ycomponent]
+    /// os - stream to output to
+    /// v - the twist to print
+    std::ostream & operator<<(std::ostream & os, const Twist2D & t);
+
+    /// \brief input a 2 dimensional twist
+    /// \param is - stream from which to read
+    /// \param t [out] - output twist
+    std::istream & operator>>(std::istream & is, Twist2D & t);
 
     /// \brief a rigid body transformation in 2 dimensions
     class Transform2D
