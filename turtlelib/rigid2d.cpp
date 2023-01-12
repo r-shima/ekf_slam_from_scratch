@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cmath>
 #include "rigid2d.hpp"
 
 namespace turtlelib
@@ -20,6 +21,7 @@ namespace turtlelib
         else {
             is >> v.x >> v.y;
         }
+        std::cin.ignore(100, '\n');
         return is;
     }
 
@@ -41,7 +43,55 @@ namespace turtlelib
         else {
             is >> t.w >> t.x >> t.y;
         }
+        std::cin.ignore(100, '\n');
         return is;
+    }
+
+    Transform2D::Transform2D() : tran{0.0, 0.0}, theta(0.0) {}
+
+    Transform2D::Transform2D(Vector2D trans) : tran(trans), theta(0.0) {}
+
+    Transform2D::Transform2D(double radians) : tran{0.0, 0.0}, theta(radians) {}
+
+    Transform2D::Transform2D(Vector2D trans, double radians) : tran(trans), theta(radians) {}
+
+    Vector2D Transform2D::operator()(Vector2D v) const {
+        Vector2D vec;
+        vec.x = v.x * cos(theta) - v.y * sin(theta) + tran.x;
+        vec.y = v.x * sin(theta) + v.y * cos(theta) + tran.y;
+        return vec;
+    }
+
+    Transform2D Transform2D::inv() const {
+        Transform2D inv_trans;
+        inv_trans.tran.x = -tran.x * cos(theta) - tran.y * sin(theta);
+        inv_trans.tran.y = -tran.y * cos(theta) + tran.x * sin(theta);
+        inv_trans.theta = -theta;
+        return inv_trans;
+    }
+
+    Transform2D & Transform2D::operator*=(const Transform2D & rhs) {
+        tran.x = rhs.tran.x * cos(theta) - rhs.tran.y * sin(theta) + tran.x;
+        tran.y = rhs.tran.x * sin(theta) + rhs.tran.y * cos(theta) + tran.y;
+        theta = rhs.theta + theta;
+        return *this;
+    }
+
+    Vector2D Transform2D::translation() const {
+        return tran;
+    }
+
+    double Transform2D::rotation() const {
+        return theta;
+    }
+
+    std::ostream & operator<<(std::ostream & os, const Transform2D & tf) {
+        os << "deg: " << rad2deg(tf.theta) << " x: " << tf.tran.x << " y: " << tf.tran.y;
+        return os;
+    }
+
+    Transform2D operator*(Transform2D lhs, const Transform2D & rhs) {
+        return lhs *= rhs;
     }
 }
 
@@ -54,7 +104,6 @@ int main() {
     // turtlelib::Vector2D vec2;
     // std::cin >> vec2;
     // std::cout << vec2;
-    // std::cin.ignore(100, '\n');
     // turtlelib::Twist2D vec3;
     // vec3.w = 1.0;
     // vec3.x = 1.0;
