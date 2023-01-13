@@ -77,8 +77,6 @@ namespace turtlelib
         double y = 0.0;
     };
 
-
-
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
     /// os - stream to output to
     /// v - the vector to print
@@ -197,8 +195,10 @@ namespace turtlelib
     /// HINT: This function should be implemented in terms of *=
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs);
 
-
-
+    /// \brief normalize a two dimentional vector
+    /// \param vec - the vector to normalize
+    /// \return the normalized vector
+    Vector2D normalize_vector(Vector2D vec);
 }
 
 #endif

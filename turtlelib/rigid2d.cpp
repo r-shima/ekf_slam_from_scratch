@@ -16,7 +16,6 @@ namespace turtlelib
             is.get();
             is >> v.x;
             is >> v.y;
-            is.get();
         }
         else {
             is >> v.x >> v.y;
@@ -35,10 +34,7 @@ namespace turtlelib
 
         if(c == '[') {
             is.get();
-            is >> t.w;
-            is >> t.x;
-            is >> t.y;
-            is.get();
+            is >> t.w >> t.x >> t.y;
         }
         else {
             is >> t.w >> t.x >> t.y;
@@ -47,13 +43,25 @@ namespace turtlelib
         return is;
     }
 
-    Transform2D::Transform2D() : tran{0.0, 0.0}, theta(0.0) {}
+    Transform2D::Transform2D()
+    : tran{0.0, 0.0},
+      theta(0.0)
+    {}
 
-    Transform2D::Transform2D(Vector2D trans) : tran(trans), theta(0.0) {}
+    Transform2D::Transform2D(Vector2D trans)
+    : tran(trans),
+      theta(0.0)
+    {}
 
-    Transform2D::Transform2D(double radians) : tran{0.0, 0.0}, theta(radians) {}
+    Transform2D::Transform2D(double radians)
+    : tran{0.0, 0.0},
+      theta(radians)
+    {}
 
-    Transform2D::Transform2D(Vector2D trans, double radians) : tran(trans), theta(radians) {}
+    Transform2D::Transform2D(Vector2D trans, double radians)
+    : tran(trans),
+      theta(radians)
+    {}
 
     Vector2D Transform2D::operator()(Vector2D v) const {
         Vector2D vec;
@@ -90,8 +98,35 @@ namespace turtlelib
         return os;
     }
 
+    std::istream & operator>>(std::istream & is, Transform2D & tf) {
+        Vector2D vec;
+        double theta = 0.0;
+        char c = is.peek();
+        std::string str1;
+        std::string str2;
+        std::string str3;
+
+        if(c == 'd') {
+            is >> str1 >> theta >> str2 >> vec.x >> str3 >> vec.y;
+        }
+        else {
+            is >> theta >> vec.x >> vec.y;
+        }
+        theta = deg2rad(theta);
+        tf = Transform2D(vec, theta);
+        return is;
+    }
+
     Transform2D operator*(Transform2D lhs, const Transform2D & rhs) {
         return lhs *= rhs;
+    }
+
+    Vector2D normalize_vector(Vector2D vec) {
+        Vector2D unit_vec;
+        double mag = sqrt(pow(vec.x, 2) + pow(vec.y, 2));
+        unit_vec.x = vec.x / mag;
+        unit_vec.y = vec.y / mag;
+        return unit_vec;
     }
 }
 
@@ -112,5 +147,8 @@ int main() {
     // turtlelib::Twist2D vec4;
     // std::cin >> vec4;
     // std::cout << vec4;
+    // turtlelib::Transform2D tf;
+    // std::cin >> tf;
+    // std::cout << tf;
     return 0;
 }
