@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
-#include "rigid2d.hpp"
+#include <limits.h>
+#include "turtlelib/rigid2d.hpp"
 
 namespace turtlelib
 {
@@ -20,7 +21,8 @@ namespace turtlelib
         else {
             is >> v.x >> v.y;
         }
-        std::cin.ignore(100, '\n');
+        std::cin.clear();
+        std::cin.ignore(INT_MAX, '\n');
         return is;
     }
 
@@ -39,7 +41,8 @@ namespace turtlelib
         else {
             is >> t.w >> t.x >> t.y;
         }
-        std::cin.ignore(100, '\n');
+        std::cin.clear();
+        std::cin.ignore(INT_MAX, '\n');
         return is;
     }
 
@@ -120,7 +123,8 @@ namespace turtlelib
         else {
             is >> theta >> vec.x >> vec.y;
         }
-        std::cin.ignore(100, '\n');
+        std::cin.clear();
+        std::cin.ignore(INT_MAX, '\n');
         theta = deg2rad(theta);
         tf = Transform2D(vec, theta);
         return is;
