@@ -149,7 +149,6 @@ namespace turtlelib
         /// \return a vector in the new coordinate system
         Vector2D operator()(Vector2D v) const;
 
-
         /// \brief invert the transformation
         /// \return the inverse transformation. 
         Transform2D inv() const;
@@ -167,6 +166,11 @@ namespace turtlelib
         /// \brief get the angular displacement of the transform
         /// \return the angular displacement, in radians
         double rotation() const;
+
+        /// \brief apply a transformation to a Twist2D
+        /// \param t - the twist to transform
+        /// \return a twist in the new coordinate system
+        Twist2D operator()(Twist2D t) const;
 
         /// \brief \see operator<<(...) (declared outside this class)
         /// for a description
