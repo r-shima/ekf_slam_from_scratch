@@ -142,26 +142,3 @@ namespace turtlelib
         return unit_vec;
     }
 }
-
-// int main() {
-//     printf("%d\n", turtlelib::almost_equal(3, 2));
-//     turtlelib::Vector2D vec1;
-//     vec1.x = 1.0;
-//     vec1.y = 2.0;
-//     std::cout << vec1 << std::endl;
-//     turtlelib::Vector2D vec2;
-//     std::cin >> vec2;
-//     std::cout << vec2;
-//     turtlelib::Twist2D vec3;
-//     vec3.w = 1.0;
-//     vec3.x = 1.0;
-//     vec3.y = 1.0;
-//     std::cout << vec3 << std::endl;
-//     turtlelib::Twist2D vec4;
-//     std::cin >> vec4;
-//     std::cout << vec4;
-//     turtlelib::Transform2D tf;
-//     std::cin >> tf;
-//     std::cout << tf;
-//     return 0;
-// }
