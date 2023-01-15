@@ -8,18 +8,20 @@ A library for handling transformations in SE(2) and other turtlebot-related math
 # Conceptual Questions
 1. We need to be able to ~normalize~ Vector2D objects (i.e., find the unit vector in the direction of a given Vector2D):
    - Propose three different designs for implementing the ~normalize~ functionality
-   1. Include it as an independent function
-   2. Put it in a class or struct as a member function
-   3. Create a normalize class
+
+     1. Include it as an independent function
+     2. Put it in a class or struct as a member function
+     3. Create a normalize class
 
    - Discuss the pros and cons of each proposed method, in light of the C++ Core Guidelines.
-   1. This is easy to implement. Moreover, the function can be seen as part of the useful interface to the Vector2D struct even though it does not need direct access to the representation of the struct. This is according to C.5. However, it cannot directly access the private members of a class.
-   2. According to C.4, a member function should be made only if it needs direct access to the representation of a class. This member function will need to use other member functions in the class and access private members in order to have the normalize functionality. One drawback is that it can only be called on an object of the class it is defined in.
-   3. Using a class can protect data from unintended modification. However, according to C.1, classes should be used for ease of comprehension. Creating a class based on one functionality is too complicated.
+
+     1. This is easy to implement. Moreover, the function can be seen as part of the useful interface to the Vector2D struct even though it does not need direct access to the representation of the struct. This is according to C.5. However, it cannot directly access the private members of a class.
+     2. According to C.4, a member function should be made only if it needs direct access to the representation of a class. This member function will need to use other member functions in the class and access private members in order to have the normalize functionality. One drawback is that it can only be called on an object of the class it is defined in.
+     3. Using a class can protect data from unintended modification. However, according to C.1, classes should be used for ease of comprehension. Creating a class based on one functionality is too complicated.
 
    - Which of the methods would you implement and why?
 
-   I implemented option #1 because there was no need for the function to use member variables of a class. It just required one Vector2D argument, performed the necessary operations, and returned a normalized vector.
+     I implemented option (a) because there was no need for the function to use member variables of a class. It just required one Vector2D argument, performed the necessary operations, and returned a normalized vector.
 
 2. What is the difference between a class and a struct in C++?
 
