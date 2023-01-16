@@ -103,6 +103,7 @@ namespace turtlelib
     /// HINT: this function can be written in under 20 lines and uses only std::peek(), std::get(), istream::operator>>() and a little logic
     std::istream & operator>>(std::istream & is, Vector2D & v);
 
+    /// \brief A 2-Dimensional Twist
     struct Twist2D
     {
         /// \brief the angular velocity
