@@ -21,8 +21,8 @@ namespace turtlelib
         else {
             is >> v.x >> v.y;
         }
-        std::cin.clear();
-        std::cin.ignore(INT_MAX, '\n');
+        is.clear();
+        is.ignore(INT_MAX, '\n');
         return is;
     }
 
@@ -41,8 +41,8 @@ namespace turtlelib
         else {
             is >> t.w >> t.x >> t.y;
         }
-        std::cin.clear();
-        std::cin.ignore(INT_MAX, '\n');
+        is.clear();
+        is.ignore(INT_MAX, '\n');
         return is;
     }
 
@@ -123,8 +123,8 @@ namespace turtlelib
         else {
             is >> theta >> vec.x >> vec.y;
         }
-        std::cin.clear();
-        std::cin.ignore(INT_MAX, '\n');
+        is.clear();
+        is.ignore(INT_MAX, '\n');
         theta = deg2rad(theta);
         tf = Transform2D(vec, theta);
         return is;
