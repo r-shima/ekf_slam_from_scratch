@@ -84,7 +84,7 @@ namespace turtlelib
     Transform2D & Transform2D::operator*=(const Transform2D & rhs) {
         tran.x = rhs.tran.x * cos(theta) - rhs.tran.y * sin(theta) + tran.x;
         tran.y = rhs.tran.x * sin(theta) + rhs.tran.y * cos(theta) + tran.y;
-        theta = rhs.theta + theta;
+        theta = fmod(rhs.theta + theta, 2*PI);
         return *this;
     }
 
