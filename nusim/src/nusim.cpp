@@ -5,6 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
+#include "std_srvs/srv/empty.hpp"
 
 class nusim : public rclcpp::Node
 {
@@ -15,8 +16,13 @@ class nusim : public rclcpp::Node
         {
             declare_parameter("rate", 200);
             int rate_ = get_parameter("rate").get_parameter_value().get<int>();
-            publisher_ = create_publisher<std_msgs::msg::UInt64>("timestep", 10);
-            timer_ = create_wall_timer(std::chrono::milliseconds(1000/rate_), std::bind(&nusim::timer_callback, this));
+            publisher_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
+            timer_ = create_wall_timer(std::chrono::milliseconds(1000/rate_),
+                                       std::bind(&nusim::timer_callback, this));
+            service = create_service<std_srvs::srv::Empty>("~/reset", 
+                                                           std::bind(&nusim::reset_callback, this,
+                                                           std::placeholders::_1, 
+                                                           std::placeholders::_2));
         }
     private:
         void timer_callback()
@@ -26,8 +32,16 @@ class nusim : public rclcpp::Node
             RCLCPP_INFO_STREAM(get_logger(), "Publishing: " << message.data);
             publisher_->publish(message);
         }
+
+        void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
+        std::shared_ptr<std_srvs::srv::Empty::Response> response)
+        {
+            timestep_ = 0;
+        }
+
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr publisher_;
+        rclcpp::Service<std_srvs::srv::Empty>::SharedPtr service;
         size_t timestep_;
 };
 
