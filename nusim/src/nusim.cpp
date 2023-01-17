@@ -36,11 +36,13 @@ class nusim : public rclcpp::Node
         void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request> request,
         std::shared_ptr<std_srvs::srv::Empty::Response> response)
         {
+            (void)request; // Get rid of unused warnings
+            (void)response; // Get rid of unused warnings
             timestep_ = 0;
         }
 
-        rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr publisher_;
+        rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Service<std_srvs::srv::Empty>::SharedPtr service;
         size_t timestep_;
 };
