@@ -5,10 +5,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
-<<<<<<< HEAD
 #include "std_srvs/srv/empty.hpp"
-=======
->>>>>>> b66d21a (Created nusim node)
 
 class nusim : public rclcpp::Node
 {
