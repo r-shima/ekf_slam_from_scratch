@@ -10,6 +10,7 @@
 #include "tf2/LinearMath/Quaternion.h"
 #include "tf2_ros/transform_broadcaster.h"
 #include "nusim/srv/teleport.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
 
 class Nusim : public rclcpp::Node
 {
@@ -26,7 +27,11 @@ class Nusim : public rclcpp::Node
             x0_ = get_parameter("x0").get_parameter_value().get<double>();
             y0_ = get_parameter("y0").get_parameter_value().get<double>();
             theta0_ = get_parameter("theta0").get_parameter_value().get<double>();
-            publisher_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
+            x_init_ = x0_;
+            y_init_ = y0_;
+            theta_init_ = theta0_;
+            timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
+            marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
             timer_ = create_wall_timer(std::chrono::milliseconds(1000/rate_),
                                        std::bind(&Nusim::timer_callback, this));
             reset_ = create_service<std_srvs::srv::Empty>("~/reset", 
@@ -47,7 +52,7 @@ class Nusim : public rclcpp::Node
             auto message = std_msgs::msg::UInt64();
             message.data = timestep_++;
             RCLCPP_INFO_STREAM(get_logger(), "Publishing: " << message.data);
-            publisher_->publish(message);
+            timestep_pub_->publish(message);
 
             geometry_msgs::msg::TransformStamped t;
             t.header.stamp = get_clock()->now();
@@ -63,12 +68,17 @@ class Nusim : public rclcpp::Node
             t.transform.rotation.y = q.y();
             t.transform.rotation.z = q.z();
             t.transform.rotation.w = q.w();
+
+            tf_broadcaster_->sendTransform(t);
         }
 
         void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request>,
         std::shared_ptr<std_srvs::srv::Empty::Response>)
         {
             timestep_ = 0;
+            x0_ = x_init_;
+            y0_ = y_init_;
+            theta0_ = theta_init_;
         }
 
         void teleport_callback(const std::shared_ptr<nusim::srv::Teleport::Request> request,
@@ -79,16 +89,15 @@ class Nusim : public rclcpp::Node
             theta0_ = request->theta;
         }
 
-        rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr publisher_;
+        rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
+        rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
         rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
         std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
         size_t timestep_;
         int rate_;
-        double x0_;
-        double y0_;
-        double theta0_;
+        double x0_, y0_, theta0_, x_init_, y_init_, theta_init_;
 };
 
 int main(int argc, char * argv[])

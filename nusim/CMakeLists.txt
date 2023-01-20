@@ -12,6 +12,7 @@ find_package(std_srvs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(visualization_msgs)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_srv "srv/Teleport.srv" LIBRARY_NAME ${PROJECT_NAME})
@@ -24,13 +25,20 @@ ament_target_dependencies(nusim
   std_srvs
   geometry_msgs
   tf2
-  tf2_ros)
+  tf2_ros
+  visualization_msgs)
 
 target_link_libraries(nusim "${cpp_typesupport_target}")
 
 install(TARGETS
   nusim
   DESTINATION lib/${PROJECT_NAME})
+
+install(DIRECTORY
+  launch
+  config
+  DESTINATION share/nusim/
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
