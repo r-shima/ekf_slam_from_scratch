@@ -12,4 +12,5 @@ The following parameters in `config/basic_world.yaml` can be used to change the 
     * `x` - A list of the obstacles' x coordinates
     * `y` - A list of the obstacles' y coordinates
     * `r` - The radius of the obstacles
+## Image of the Simulated Environment
 ![](images/nusim1.png)
