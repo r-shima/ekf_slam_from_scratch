@@ -1,3 +1,25 @@
+/// \file
+/// \brief This node displays a red turtlebot in a simulated environment with cylindrical obstacles
+///
+/// PARAMETERS:
+///     rate (int): a frequency used to run the main loop
+///     x0 (double): the x component of the initial pose of the robot
+///     y0 (double): the y component of the initial pose of the robot
+///     theta0 (double): the theta component of the initial pose of the robot
+///     obstacles.x (std::vector<double>): a list of the obstacles' x coordinates
+///     obstacles.y (std::vector<double>): a list of the obstacles' y coordinates
+///     obstacles.r (double): the radius of the obstacles
+/// PUBLISHES:
+///     /nusim/timestep (std_msgs::msg::UInt64): the timestep for the simulation
+///     /nusim/obstacles (visualization_msgs::msg::MarkerArray): cylinderical markers that act as 
+///                                                              the obstacles
+/// SUBSCRIBES:
+///     topic_name (topic_type): description of the topic
+/// SERVERS:
+///     service_name (service_type): description of the service
+/// CLIENTS:
+///     service_name (service_type): description of the service
+
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -99,9 +121,12 @@ class Nusim : public rclcpp::Node
 
         void add_obstacles() {
             int marker_array_size = obstacles_x.size();
+            int num = 0;
 
             if(obstacles_x.size() != obstacles_y.size()) {
-                throw;
+                RCLCPP_ERROR(this->get_logger(), 
+                    "x and y coordinates do not have the same length");
+                throw num;
             }
             
             for(int i=0; i<marker_array_size; i++) {
@@ -141,7 +166,13 @@ class Nusim : public rclcpp::Node
 int main(int argc, char * argv[])
 {
     rclcpp::init(argc, argv);
-    rclcpp::spin(std::make_shared<Nusim>());
+    try {
+        rclcpp::spin(std::make_shared<Nusim>());
+    }
+    catch(int num) {
+        RCLCPP_ERROR(std::make_shared<Nusim>()->get_logger(), 
+                    "x and y coordinates do not have the same length");
+    }
     rclcpp::shutdown();
     return 0;
 }
