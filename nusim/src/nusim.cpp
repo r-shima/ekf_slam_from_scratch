@@ -23,10 +23,16 @@ class Nusim : public rclcpp::Node
             declare_parameter("x0", 0.0);
             declare_parameter("y0", 0.0);
             declare_parameter("theta0", 0.0);
+            declare_parameter("obstacles_x", std::vector<double> {});
+            declare_parameter("obstacles_y", std::vector<double> {});
+            declare_parameter("obstacles_r", 0.038);
             rate_ = get_parameter("rate").get_parameter_value().get<int>();
             x0_ = get_parameter("x0").get_parameter_value().get<double>();
             y0_ = get_parameter("y0").get_parameter_value().get<double>();
             theta0_ = get_parameter("theta0").get_parameter_value().get<double>();
+            obstacles_x = get_parameter("obstacles_x").as_double_array();
+            obstacles_y = get_parameter("obstacles_y").as_double_array();
+            obstacles_r = get_parameter("obstacles_r").get_parameter_value().get<double>();
             x_init_ = x0_;
             y_init_ = y0_;
             theta_init_ = theta0_;
@@ -45,6 +51,7 @@ class Nusim : public rclcpp::Node
                                                              std::placeholders::_1,
                                                              std::placeholders::_2));
             tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+            add_obstacles();
         }
     private:
         void timer_callback()
@@ -70,6 +77,7 @@ class Nusim : public rclcpp::Node
             t.transform.rotation.w = q.w();
 
             tf_broadcaster_->sendTransform(t);
+            marker_pub_->publish(marker_array_);
         }
 
         void reset_callback(const std::shared_ptr<std_srvs::srv::Empty::Request>,
@@ -89,6 +97,28 @@ class Nusim : public rclcpp::Node
             theta0_ = request->theta;
         }
 
+        void add_obstacles() {
+            int marker_array_size = obstacles_x.size();
+            for(int i=0; i<marker_array_size; i++) {
+                visualization_msgs::msg::Marker marker;
+                marker.header.frame_id = "nusim/world";
+                marker.id = i;
+                marker.type = visualization_msgs::msg::Marker::CYLINDER;
+                marker.action = visualization_msgs::msg::Marker::ADD;
+                marker.pose.position.x = obstacles_x[i];
+                marker.pose.position.y = obstacles_y[i];
+                marker.pose.position.z = 0.125;
+                marker.scale.x = 2 * obstacles_r;
+                marker.scale.y = 2 * obstacles_r;
+                marker.scale.z = 0.25;
+                marker.color.r = 1.0;
+                marker.color.g = 0.0;
+                marker.color.b = 0.0;
+                marker.color.a = 1.0;
+                marker_array_.markers.push_back(marker);
+            }
+        }
+
         rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
         rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
         rclcpp::TimerBase::SharedPtr timer_;
@@ -98,6 +128,9 @@ class Nusim : public rclcpp::Node
         size_t timestep_;
         int rate_;
         double x0_, y0_, theta0_, x_init_, y_init_, theta_init_;
+        std::vector<double> obstacles_x, obstacles_y;
+        double obstacles_r;
+        visualization_msgs::msg::MarkerArray marker_array_;
 };
 
 int main(int argc, char * argv[])
