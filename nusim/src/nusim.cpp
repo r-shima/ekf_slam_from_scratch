@@ -99,6 +99,11 @@ class Nusim : public rclcpp::Node
 
         void add_obstacles() {
             int marker_array_size = obstacles_x.size();
+
+            if(obstacles_x.size() != obstacles_y.size()) {
+                rclcpp::shutdown();
+            }
+            
             for(int i=0; i<marker_array_size; i++) {
                 visualization_msgs::msg::Marker marker;
                 marker.header.frame_id = "nusim/world";
