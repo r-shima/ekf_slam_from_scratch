@@ -23,16 +23,16 @@ class Nusim : public rclcpp::Node
             declare_parameter("x0", 0.0);
             declare_parameter("y0", 0.0);
             declare_parameter("theta0", 0.0);
-            declare_parameter("obstacles_x", std::vector<double> {});
-            declare_parameter("obstacles_y", std::vector<double> {});
-            declare_parameter("obstacles_r", 0.038);
+            declare_parameter("obstacles.x", std::vector<double> {});
+            declare_parameter("obstacles.y", std::vector<double> {});
+            declare_parameter("obstacles.r", 0.038);
             rate_ = get_parameter("rate").get_parameter_value().get<int>();
             x0_ = get_parameter("x0").get_parameter_value().get<double>();
             y0_ = get_parameter("y0").get_parameter_value().get<double>();
             theta0_ = get_parameter("theta0").get_parameter_value().get<double>();
-            obstacles_x = get_parameter("obstacles_x").as_double_array();
-            obstacles_y = get_parameter("obstacles_y").as_double_array();
-            obstacles_r = get_parameter("obstacles_r").get_parameter_value().get<double>();
+            obstacles_x = get_parameter("obstacles.x").get_parameter_value().get<std::vector<double>>();
+            obstacles_y = get_parameter("obstacles.y").get_parameter_value().get<std::vector<double>>();
+            obstacles_r = get_parameter("obstacles.r").get_parameter_value().get<double>();
             x_init_ = x0_;
             y_init_ = y0_;
             theta_init_ = theta0_;
@@ -101,7 +101,7 @@ class Nusim : public rclcpp::Node
             int marker_array_size = obstacles_x.size();
 
             if(obstacles_x.size() != obstacles_y.size()) {
-                rclcpp::shutdown();
+                throw;
             }
             
             for(int i=0; i<marker_array_size; i++) {
