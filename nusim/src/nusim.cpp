@@ -153,7 +153,7 @@ private:
     if (obstacles_x.size() != obstacles_y.size()) {
       RCLCPP_ERROR(
         this->get_logger(),
-        "x and y coordinates do not have the same length");
+        "obstacles' x and y coordinate lists do not have the same length");
       throw num;
     }
 
