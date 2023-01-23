@@ -40,6 +40,7 @@ public:
   : Node("nusim"),
     timestep_(0)
   {
+    // Initializes variables for the parameters, publishers, timer, services, and broadcaster
     declare_parameter("rate", 200);
     declare_parameter("x0", 0.0);
     declare_parameter("y0", 0.0);
@@ -54,9 +55,6 @@ public:
     obstacles_x = get_parameter("obstacles.x").get_parameter_value().get<std::vector<double>>();
     obstacles_y = get_parameter("obstacles.y").get_parameter_value().get<std::vector<double>>();
     obstacles_r = get_parameter("obstacles.r").get_parameter_value().get<double>();
-    x_init_ = x0_;
-    y_init_ = y0_;
-    theta_init_ = theta0_;
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     timer_ = create_wall_timer(
@@ -77,6 +75,12 @@ public:
         std::placeholders::_1,
         std::placeholders::_2));
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+
+    // Store the initial location of the robot
+    x_init_ = x0_;
+    y_init_ = y0_;
+    theta_init_ = theta0_;
+
     add_obstacles();
   }
 
@@ -153,7 +157,7 @@ private:
     if (obstacles_x.size() != obstacles_y.size()) {
       RCLCPP_ERROR(
         this->get_logger(),
-        "obstacles' x and y coordinate lists do not have the same length");
+        "Obstacles' x and y coordinate lists do not have the same length");
       throw num;
     }
 
@@ -204,7 +208,7 @@ int main(int argc, char * argv[])
   } catch (int num) {
     RCLCPP_ERROR(
       std::make_shared<Nusim>()->get_logger(),
-      "x and y coordinates do not have the same length");
+      "Obstacles' x and y coordinate lists do not have the same length");
   }
   rclcpp::shutdown();
   return 0;
