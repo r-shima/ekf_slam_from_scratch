@@ -36,8 +36,12 @@ doxygen_add_docs(doxygen include/ src/ README.md ALL)
 # We use the catch2 unit testing framework
 find_package(Catch2 3 REQUIRED)
 
+include(CTest)
 enable_testing()
 add_executable(turtlelib_test tests/tests.cpp)
 target_link_libraries(turtlelib_test turtlelib Catch2::Catch2WithMain)
 
 add_test(NAME Test_of_Turtlelib COMMAND turtlelib_test)
+install(TARGETS
+  turtlelib
+  DESTINATION lib/${PROJECT_NAME})
