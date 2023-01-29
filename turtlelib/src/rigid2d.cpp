@@ -143,10 +143,65 @@ namespace turtlelib
     }
 
     double normalize_angle(double rad) {
-        double angle = fmod(rad - PI, 2*PI);
-        if (angle > 0.0) {
-            angle -= (2*PI);
+        double angle = fmod(rad, 2*PI);
+        if (angle > PI) {
+            angle = -PI + (angle - PI);
         }
-        return angle + PI;
+        else if(angle <= -PI) {
+            angle = PI - (angle + PI);
+        }
+        return angle;
+    }
+
+    Vector2D & Vector2D::operator+=(const Vector2D & rhs) {
+        x += rhs.x;
+        y += rhs.y;
+        return *this;
+    }
+
+    Vector2D & Vector2D::operator-=(const Vector2D & rhs) {
+        x -= rhs.x;
+        y -= rhs.y;
+        return *this;
+    }
+
+    Vector2D & Vector2D::operator*=(const double & rhs) {
+        x *= rhs;
+        y *= rhs;
+        return *this;
+    }
+
+    Vector2D operator+(Vector2D lhs, const Vector2D & rhs) {
+        return lhs += rhs;
+    }
+
+    Vector2D operator-(Vector2D lhs, const Vector2D & rhs) {
+        return lhs -= rhs;
+    }
+
+    Vector2D operator*(Vector2D lhs, const double & rhs) {
+        return lhs *= rhs;
+    }
+
+    Vector2D operator*(const double & lhs, Vector2D rhs) {
+        return rhs *= lhs;
+    }
+
+    double dot(Vector2D vec1, Vector2D vec2) {
+        double dot_product = vec1.x * vec2.x + vec1.y * vec2.y;
+        return dot_product;
+    }
+
+    double magnitude(Vector2D vec) {
+        double mag = sqrt(pow(vec.x, 2) + pow(vec.y, 2));
+        return mag;
+    }
+
+    double angle(Vector2D vec1, Vector2D vec2) {
+        double dot_product = dot(vec1, vec2);
+        double mag1 = magnitude(vec1);
+        double mag2 = magnitude(vec2);
+        double angle = acos(dot_product / (mag1 * mag2));
+        return angle;
     }
 }

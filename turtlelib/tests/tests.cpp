@@ -98,3 +98,62 @@ TEST_CASE("Normalize Angle", "[rigid2d]") {
     REQUIRE_THAT(turtlelib::normalize_angle(3 * turtlelib::PI / 2), Catch::Matchers::WithinAbs(-turtlelib::PI / 2, 1.0e-5));
     REQUIRE_THAT(turtlelib::normalize_angle(-5 * turtlelib::PI / 2), Catch::Matchers::WithinAbs(-turtlelib::PI / 2, 1.0e-5));
 }
+
+TEST_CASE("Vector2D Operator+", "[rigid2d]") {
+    turtlelib::Vector2D vec1, vec2;
+    vec1.x = 2.5;
+    vec1.y = 4.3;
+    vec2.x = 3.0;
+    vec2.y = 5.2;
+    REQUIRE_THAT((vec1+vec2).x, Catch::Matchers::WithinAbs(5.5, 1.0e-5));
+    REQUIRE_THAT((vec1+vec2).y, Catch::Matchers::WithinAbs(9.5, 1.0e-5));
+}
+
+TEST_CASE("Vector2D Operator-", "[rigid2d]") {
+    turtlelib::Vector2D vec1, vec2;
+    vec1.x = 2.5;
+    vec1.y = 4.3;
+    vec2.x = 3.0;
+    vec2.y = 5.2;
+    REQUIRE_THAT((vec1-vec2).x, Catch::Matchers::WithinAbs(-0.5, 1.0e-5));
+    REQUIRE_THAT((vec1-vec2).y, Catch::Matchers::WithinAbs(-0.9, 1.0e-5));
+}
+
+TEST_CASE("Operator* Vector2D and Scalar", "[rigid2d]") {
+    turtlelib::Vector2D vec = {2.0, 3.0};
+    double scalar = 3.0;
+    REQUIRE_THAT((vec*scalar).x, Catch::Matchers::WithinAbs(6.0, 1.0e-5));
+    REQUIRE_THAT((vec*scalar).y, Catch::Matchers::WithinAbs(9.0, 1.0e-5));
+}
+
+TEST_CASE("Operator* Scalar and Vector2D", "[rigid2d]") {
+    turtlelib::Vector2D vec = {2.0, 3.0};
+    double scalar = 3.0;
+    REQUIRE_THAT((scalar*vec).x, Catch::Matchers::WithinAbs(6.0, 1.0e-5));
+    REQUIRE_THAT((scalar*vec).y, Catch::Matchers::WithinAbs(9.0, 1.0e-5));
+}
+
+TEST_CASE("Dot Product", "[rigid2d]") {
+    turtlelib::Vector2D vec1, vec2;
+    vec1.x = 1.0;
+    vec1.y = 2.0;
+    vec2.x = 1.0;
+    vec2.y = 2.0;
+    REQUIRE_THAT(turtlelib::dot(vec1, vec2), Catch::Matchers::WithinAbs(5.0, 1.0e-5));
+}
+
+TEST_CASE("Magnitude", "[rigid2d]") {
+    turtlelib::Vector2D vec;
+    vec.x = 3.0;
+    vec.y = 4.0;
+    REQUIRE_THAT(turtlelib::magnitude(vec), Catch::Matchers::WithinAbs(5.0, 1.0e-5));
+}
+
+TEST_CASE("Angle", "[rigid2d]") {
+    turtlelib::Vector2D vec1, vec2;
+    vec1.x = 3.0;
+    vec1.y = 4.0;
+    vec2.x = 4.0;
+    vec2.y = 3.0;
+    REQUIRE_THAT(turtlelib::angle(vec1, vec2), Catch::Matchers::WithinAbs(0.28379, 1.0e-5));
+}
