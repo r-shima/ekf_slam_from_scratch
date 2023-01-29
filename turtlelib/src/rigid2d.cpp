@@ -84,7 +84,7 @@ namespace turtlelib
     Transform2D & Transform2D::operator*=(const Transform2D & rhs) {
         tran.x = rhs.tran.x * cos(theta) - rhs.tran.y * sin(theta) + tran.x;
         tran.y = rhs.tran.x * sin(theta) + rhs.tran.y * cos(theta) + tran.y;
-        theta = fmod(rhs.theta + theta, 2*PI);
+        theta = rhs.theta + theta;
         return *this;
     }
 
@@ -140,5 +140,13 @@ namespace turtlelib
         unit_vec.x = vec.x / mag;
         unit_vec.y = vec.y / mag;
         return unit_vec;
+    }
+
+    double normalize_angle(double rad) {
+        double angle = fmod(rad - PI, 2*PI);
+        if (angle > 0.0) {
+            angle -= (2*PI);
+        }
+        return angle + PI;
     }
 }

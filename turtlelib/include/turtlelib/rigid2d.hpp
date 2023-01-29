@@ -204,6 +204,11 @@ namespace turtlelib
     /// \param vec - the vector to normalize
     /// \return the normalized vector
     Vector2D normalize_vector(Vector2D vec);
+
+    /// \brief turn any angle into the equivalent angle in the interval (-pi, pi]
+    /// \param rad 
+    /// \return the normalized angle
+    double normalize_angle(double rad);
 }
 
 #endif
