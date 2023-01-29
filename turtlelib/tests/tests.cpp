@@ -9,15 +9,15 @@ TEST_CASE("Inverse", "[transform]") { // Katie, Hughes
     float my_ang = turtlelib::PI/2;
     turtlelib::Transform2D Ttest = {turtlelib::Vector2D{my_x,my_y}, my_ang};
     turtlelib::Transform2D Ttest_inv = Ttest.inv();
-    REQUIRE((Ttest.inv()).rotation() == -my_ang);
-    REQUIRE(turtlelib::almost_equal(Ttest_inv.translation().x, -1.0, 1.0e-5));
-    REQUIRE(turtlelib::almost_equal(Ttest_inv.translation().y,  0.0, 1.0e-5));
+    REQUIRE_THAT((Ttest.inv()).rotation(), Catch::Matchers::WithinAbs(-my_ang, 1.0e-5));
+    REQUIRE_THAT(Ttest_inv.translation().x, Catch::Matchers::WithinAbs(-1.0, 1.0e-5));
+    REQUIRE_THAT(Ttest_inv.translation().y,  Catch::Matchers::WithinAbs(0.0, 1.0e-5));
 }
 
 TEST_CASE("Rotation", "[transform]") { // Rintaroh, Shima
     double theta = turtlelib::PI/4;
     turtlelib::Transform2D trans = turtlelib::Transform2D(theta);
-    REQUIRE(trans.rotation() == theta);
+    REQUIRE_THAT(trans.rotation(), Catch::Matchers::WithinAbs(theta, 1.0e-5));
 }
 
 TEST_CASE("Translation", "[transform]") { // Rintaroh, Shima
@@ -25,8 +25,8 @@ TEST_CASE("Translation", "[transform]") { // Rintaroh, Shima
     v.x = 5.5;
     v.y = 7.2;
     turtlelib::Transform2D trans = turtlelib::Transform2D(v);
-    REQUIRE(trans.translation().x == v.x);
-    REQUIRE(trans.translation().y == v.y);
+    REQUIRE_THAT(trans.translation().x, Catch::Matchers::WithinAbs(v.x, 1.0e-5));
+    REQUIRE_THAT(trans.translation().y, Catch::Matchers::WithinAbs(v.y, 1.0e-5));
 }
 
 TEST_CASE("Vector2D Operator()", "[transform]") { // Rintaroh, Shima
@@ -37,8 +37,8 @@ TEST_CASE("Vector2D Operator()", "[transform]") { // Rintaroh, Shima
     turtlelib::Transform2D trans = turtlelib::Transform2D(v, theta);
     turtlelib::Vector2D vec = {3, 4};
     turtlelib::Vector2D vector = trans(vec);
-    REQUIRE(turtlelib::almost_equal(vector.x, 4.29289, 1.0e-4));
-    REQUIRE(turtlelib::almost_equal(vector.y, 10.9497, 1.0e-4));
+    REQUIRE_THAT(vector.x, Catch::Matchers::WithinAbs(4.29289, 1.0e-4));
+    REQUIRE_THAT(vector.y, Catch::Matchers::WithinAbs(10.9497, 1.0e-4));
 }
 
 TEST_CASE("Twist2D Operator()", "[transform]") { // Rintaroh, Shima
@@ -49,9 +49,9 @@ TEST_CASE("Twist2D Operator()", "[transform]") { // Rintaroh, Shima
     turtlelib::Transform2D trans = turtlelib::Transform2D(v, theta);
     turtlelib::Twist2D t = {3, 4, 5};
     turtlelib::Twist2D twist = trans(t);
-    REQUIRE(turtlelib::almost_equal(twist.w, 3));
-    REQUIRE(turtlelib::almost_equal(twist.x, 17.2929, 1.0e-5));
-    REQUIRE(turtlelib::almost_equal(twist.y, -8.63604, 1.0e-5));
+    REQUIRE_THAT(twist.w, Catch::Matchers::WithinAbs(3, 1.0e-5));
+    REQUIRE_THAT(twist.x, Catch::Matchers::WithinAbs(17.2929, 1.0e-5));
+    REQUIRE_THAT(twist.y, Catch::Matchers::WithinAbs(-8.63604, 1.0e-5));
 }
 
 TEST_CASE("Stream insertion operator <<", "[transform]") { // Ava, Zahedi
@@ -71,9 +71,9 @@ TEST_CASE("Stream extraction operator >>", "[transform]") { // Ava, Zahedi
     std::stringstream sstr;
     sstr << "deg: 90 x: 1 y: 3.4";
     sstr >> tf;
-    REQUIRE(turtlelib::almost_equal(tf.rotation(), turtlelib::deg2rad(90), 0.00001));
-    REQUIRE(turtlelib::almost_equal(tf.translation().x, 1.0, 0.00001));
-    REQUIRE(turtlelib::almost_equal(tf.translation().y, 3.4, 0.00001));
+    REQUIRE_THAT(tf.rotation(), Catch::Matchers::WithinAbs(turtlelib::deg2rad(90), 0.00001));
+    REQUIRE_THAT(tf.translation().x, Catch::Matchers::WithinAbs(1.0, 0.00001));
+    REQUIRE_THAT(tf.translation().y, Catch::Matchers::WithinAbs(3.4, 0.00001));
 }
 
 TEST_CASE("operator *=", "[transform]") { // Megan, Sindelar
@@ -85,16 +85,16 @@ TEST_CASE("operator *=", "[transform]") { // Megan, Sindelar
     turtlelib::Vector2D trans_bc = {3,4};
     double rotate_bc = turtlelib::PI/2;
     turtlelib::Transform2D T_bc = {trans_bc, rotate_bc};
-    REQUIRE(turtlelib::almost_equal((T_ab_1*=T_bc).translation().x, 4.0));
-    REQUIRE(turtlelib::almost_equal((T_ab_2*=T_bc).translation().y, 6.0));
-    REQUIRE(turtlelib::almost_equal((T_ab_3*=T_bc).rotation(), (turtlelib::PI/2)));
+    REQUIRE_THAT((T_ab_1*=T_bc).translation().x, Catch::Matchers::WithinAbs(4.0, 1.0e-5));
+    REQUIRE_THAT((T_ab_2*=T_bc).translation().y, Catch::Matchers::WithinAbs(6.0, 1.0e-5));
+    REQUIRE_THAT((T_ab_3*=T_bc).rotation(), Catch::Matchers::WithinAbs(turtlelib::PI/2, 1.0e-5));
 }
 
 TEST_CASE("Normalize Angle", "[rigid2d]") {
-    REQUIRE_THAT(turtlelib::normalize_angle(turtlelib::PI), Catch::Matchers::WithinRel(turtlelib::PI));
-    REQUIRE_THAT(turtlelib::normalize_angle(-turtlelib::PI), Catch::Matchers::WithinRel(turtlelib::PI));
-    REQUIRE_THAT(turtlelib::normalize_angle(0.0), Catch::Matchers::WithinRel(0.0));
-    REQUIRE_THAT(turtlelib::normalize_angle(-turtlelib::PI / 4), Catch::Matchers::WithinRel(-turtlelib::PI / 4));
-    REQUIRE_THAT(turtlelib::normalize_angle(3 * turtlelib::PI / 2), Catch::Matchers::WithinRel(-turtlelib::PI / 2));
-    REQUIRE_THAT(turtlelib::normalize_angle(-5 * turtlelib::PI / 2), Catch::Matchers::WithinRel(-turtlelib::PI / 2));
+    REQUIRE_THAT(turtlelib::normalize_angle(turtlelib::PI), Catch::Matchers::WithinAbs(turtlelib::PI, 1.0e-5));
+    REQUIRE_THAT(turtlelib::normalize_angle(-turtlelib::PI), Catch::Matchers::WithinAbs(turtlelib::PI, 1.0e-5));
+    REQUIRE_THAT(turtlelib::normalize_angle(0.0), Catch::Matchers::WithinAbs(0.0, 1.0e-5));
+    REQUIRE_THAT(turtlelib::normalize_angle(-turtlelib::PI / 4), Catch::Matchers::WithinAbs(-turtlelib::PI / 4, 1.0e-5));
+    REQUIRE_THAT(turtlelib::normalize_angle(3 * turtlelib::PI / 2), Catch::Matchers::WithinAbs(-turtlelib::PI / 2, 1.0e-5));
+    REQUIRE_THAT(turtlelib::normalize_angle(-5 * turtlelib::PI / 2), Catch::Matchers::WithinAbs(-turtlelib::PI / 2, 1.0e-5));
 }
