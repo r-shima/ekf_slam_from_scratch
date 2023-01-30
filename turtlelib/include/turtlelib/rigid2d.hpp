@@ -75,7 +75,46 @@ namespace turtlelib
 
         /// \brief the y coordinate
         double y = 0.0;
+
+        /// \brief add two vectors
+        /// \param rhs - the vector to add
+        /// \return a reference to the newly added vector
+        Vector2D & operator+=(const Vector2D & rhs);
+
+        /// \brief subtract two vectors
+        /// \param rhs - the vector to subtract
+        /// \return a reference to the newly subtracted vector
+        Vector2D & operator-=(const Vector2D & rhs);
+
+        /// \brief multiply a vector by a scalar
+        /// \param rhs - the scalar to multiply
+        /// \return a reference to the vector multiplied by a scalar
+        Vector2D & operator*=(const double & rhs);
     };
+
+    /// \brief add two vectors together, returning their composition
+    /// \param lhs - the left hand operand
+    /// \param rhs - the right hand operand
+    /// \return the addition of the two vectors
+    Vector2D operator+(Vector2D lhs, const Vector2D & rhs);
+
+    /// \brief subtract two vectors, returning their composition
+    /// \param lhs - the left hand operand
+    /// \param rhs - the right hand operand
+    /// \return the subtraction of the two vectors
+    Vector2D operator-(Vector2D lhs, const Vector2D & rhs);
+
+    /// \brief multiply a scalar on the right of the vector
+    /// \param lhs - the left hand operand
+    /// \param rhs - the right hand operand
+    /// \return the vector multiplied by a scalar
+    Vector2D operator*(Vector2D lhs, const double & rhs);
+
+    /// \brief multiply a scalar on the left of the vector
+    /// \param lhs - the left hand operand
+    /// \param rhs - the right hand operand
+    /// \return the vector multiplied by a scalar
+    Vector2D operator*(const double & lhs, Vector2D rhs);
 
     /// \brief output a 2 dimensional vector as [xcomponent ycomponent]
     /// os - stream to output to
@@ -204,6 +243,34 @@ namespace turtlelib
     /// \param vec - the vector to normalize
     /// \return the normalized vector
     Vector2D normalize_vector(Vector2D vec);
+
+    /// \brief turn any angle into the equivalent angle in the interval (-pi, pi]
+    /// \param rad - the angle to normalize
+    /// \return the normalized angle
+    double normalize_angle(double rad);
+
+    /// \brief compute the dot product of two vectors
+    /// \param vec1 - the first vector
+    /// \param vec2 - the second vector
+    /// \return the dot product of two vectors
+    double dot(Vector2D vec1, Vector2D vec2);
+
+    /// \brief compute the magnitude of the vector
+    /// \param vec - the vector
+    /// \return the magnitude of the vector
+    double magnitude(Vector2D vec);
+
+    /// \brief compute the angle between two vectors
+    /// \param vec1 - the first vector
+    /// \param vec2 - the second vector
+    /// \return the angle between two vectors
+    double angle(Vector2D vec1, Vector2D vec2);
+
+    /// \brief compute the transformation corresponding to a rigid body following
+    /// a constant twist for one time-unit
+    /// \param twist - the twist to integrate
+    /// \return the resulting transformation
+    Transform2D integrate_twist(Twist2D twist);
 }
 
 #endif

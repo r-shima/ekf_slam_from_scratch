@@ -84,7 +84,7 @@ namespace turtlelib
     Transform2D & Transform2D::operator*=(const Transform2D & rhs) {
         tran.x = rhs.tran.x * cos(theta) - rhs.tran.y * sin(theta) + tran.x;
         tran.y = rhs.tran.x * sin(theta) + rhs.tran.y * cos(theta) + tran.y;
-        theta = fmod(rhs.theta + theta, 2*PI);
+        theta = rhs.theta + theta;
         return *this;
     }
 
@@ -140,5 +140,88 @@ namespace turtlelib
         unit_vec.x = vec.x / mag;
         unit_vec.y = vec.y / mag;
         return unit_vec;
+    }
+
+    double normalize_angle(double rad) {
+        double angle = fmod(rad, 2*PI);
+        if (angle > PI) {
+            angle = -PI + (angle - PI);
+        }
+        else if(angle <= -PI) {
+            angle = PI - (angle + PI);
+        }
+        return angle;
+    }
+
+    Vector2D & Vector2D::operator+=(const Vector2D & rhs) {
+        x += rhs.x;
+        y += rhs.y;
+        return *this;
+    }
+
+    Vector2D & Vector2D::operator-=(const Vector2D & rhs) {
+        x -= rhs.x;
+        y -= rhs.y;
+        return *this;
+    }
+
+    Vector2D & Vector2D::operator*=(const double & rhs) {
+        x *= rhs;
+        y *= rhs;
+        return *this;
+    }
+
+    Vector2D operator+(Vector2D lhs, const Vector2D & rhs) {
+        return lhs += rhs;
+    }
+
+    Vector2D operator-(Vector2D lhs, const Vector2D & rhs) {
+        return lhs -= rhs;
+    }
+
+    Vector2D operator*(Vector2D lhs, const double & rhs) {
+        return lhs *= rhs;
+    }
+
+    Vector2D operator*(const double & lhs, Vector2D rhs) {
+        return rhs *= lhs;
+    }
+
+    double dot(Vector2D vec1, Vector2D vec2) {
+        double dot_product = vec1.x * vec2.x + vec1.y * vec2.y;
+        return dot_product;
+    }
+
+    double magnitude(Vector2D vec) {
+        double mag = sqrt(pow(vec.x, 2) + pow(vec.y, 2));
+        return mag;
+    }
+
+    double angle(Vector2D vec1, Vector2D vec2) {
+        double dot_product = dot(vec1, vec2);
+        double mag1 = magnitude(vec1);
+        double mag2 = magnitude(vec2);
+        double angle = acos(dot_product / (mag1 * mag2));
+        return angle;
+    }
+
+    Transform2D integrate_twist(Twist2D twist) {
+        Transform2D T_bbp, T_sb, T_ssp, T_bs;
+        Vector2D vec;
+        if(twist.w == 0.0) {
+            vec.x = twist.x;
+            vec.y = twist.y;
+            T_bbp = Transform2D(vec);
+            return T_bbp;
+        }
+        else {
+            vec.x = twist.y / twist.w;
+            vec.y = -twist.x / twist.w;
+            T_sb = Transform2D(vec);
+            T_ssp = Transform2D(twist.w);
+            T_bs = T_sb.inv();
+            T_bbp = T_bs * T_ssp * T_sb;
+            return T_bbp;
+        }
     }
 }
