@@ -204,4 +204,24 @@ namespace turtlelib
         double angle = acos(dot_product / (mag1 * mag2));
         return angle;
     }
+
+    Transform2D integrate_twist(Twist2D twist) {
+        Transform2D T_bbp, T_sb, T_ssp, T_bs;
+        Vector2D vec;
+        if(twist.w == 0.0) {
+            vec.x = twist.x;
+            vec.y = twist.y;
+            T_bbp = Transform2D(vec);
+            return T_bbp;
+        }
+        else {
+            vec.x = twist.y / twist.w;
+            vec.y = -twist.x / twist.w;
+            T_sb = Transform2D(vec);
+            T_ssp = Transform2D(twist.w);
+            T_bs = T_sb.inv();
+            T_bbp = T_bs * T_ssp * T_sb;
+            return T_bbp;
+        }
+    }
 }

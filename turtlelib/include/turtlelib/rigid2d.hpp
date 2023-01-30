@@ -265,6 +265,12 @@ namespace turtlelib
     /// \param vec2 - the second vector
     /// \return the angle between two vectors
     double angle(Vector2D vec1, Vector2D vec2);
+
+    /// \brief compute the transformation corresponding to a rigid body following
+    /// a constant twist for one time-unit
+    /// \param twist - the twist to integrate
+    /// \return the resulting transformation
+    Transform2D integrate_twist(Twist2D twist);
 }
 
 #endif

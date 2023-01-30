@@ -157,3 +157,37 @@ TEST_CASE("Angle", "[rigid2d]") {
     vec2.y = 3.0;
     REQUIRE_THAT(turtlelib::angle(vec1, vec2), Catch::Matchers::WithinAbs(0.28379, 1.0e-5));
 }
+
+TEST_CASE("Integrate Twist - Pure Translation", "[rigid2d]") {
+    turtlelib::Twist2D twist;
+    twist.w = 0.0;
+    twist.x = 5.0;
+    twist.y = 6.0;
+    turtlelib::Transform2D tf = integrate_twist(twist);
+    turtlelib::Vector2D tran = tf.translation();
+    REQUIRE_THAT(tran.x, Catch::Matchers::WithinAbs(5.0, 1.0e-5));
+    REQUIRE_THAT(tran.y, Catch::Matchers::WithinAbs(6.0, 1.0e-5));
+}
+
+TEST_CASE("Integrate Twist - Pure Rotation", "[rigid2d]") {
+    turtlelib::Twist2D twist;
+    twist.w = turtlelib::PI / 4;
+    twist.x = 0.0;
+    twist.y = 0.0;
+    turtlelib::Transform2D tf = integrate_twist(twist);
+    double theta = tf.rotation();
+    REQUIRE_THAT(theta, Catch::Matchers::WithinAbs(0.785398, 1.0e-5));
+}
+
+TEST_CASE("Integrate Twist - Simultaneous Translation and Rotation", "[rigid2d]") {
+    turtlelib::Twist2D twist;
+    twist.w = turtlelib::PI / 4;
+    twist.x = 5.0;
+    twist.y = 6.0;
+    turtlelib::Transform2D tf = integrate_twist(twist);
+    turtlelib::Vector2D tran = tf.translation();
+    double theta = tf.rotation();
+    REQUIRE_THAT(tran.x, Catch::Matchers::WithinAbs(2.26404, 1.0e-5));
+    REQUIRE_THAT(tran.y, Catch::Matchers::WithinAbs(7.26651, 1.0e-5));
+    REQUIRE_THAT(theta, Catch::Matchers::WithinAbs(0.785398, 1.0e-5));
+}
