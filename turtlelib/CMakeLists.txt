@@ -47,10 +47,6 @@ target_link_libraries(turtlelib_test turtlelib Catch2::Catch2WithMain)
 
 add_test(NAME Test_of_Turtlelib COMMAND turtlelib_test)
 
-# install(TARGETS
-#   turtlelib
-#   DESTINATION lib/${PROJECT_NAME})
-
 install(DIRECTORY include/turtlelib DESTINATION include)
 
 install(TARGETS frame_main turtlelib EXPORT project_name-targets)
