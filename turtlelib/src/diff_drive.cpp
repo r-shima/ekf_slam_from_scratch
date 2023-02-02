@@ -60,6 +60,11 @@ namespace turtlelib {
         q.x = T_wbp.translation().x;
         q.y = T_wbp.translation().y;
         q.theta = normalize_angle(T_wbp.rotation());
+
+        // This also works
+        // q.x = q.x + cos(q.theta) * T_bbp.translation().x - sin(q.theta) * T_bbp.translation().y;
+        // q.y = q.y + sin(q.theta) * T_bbp.translation().x + cos(q.theta) * T_bbp.translation().y;
+        // q.theta = normalize_angle(T_bbp.rotation());
     }
 
     Config DiffDrive::configuration() const {
