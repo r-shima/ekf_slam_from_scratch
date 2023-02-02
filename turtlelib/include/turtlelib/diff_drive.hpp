@@ -56,13 +56,13 @@ namespace turtlelib {
             /// \brief create a DiffDrive object
             DiffDrive();
 
-            /// \brief create a DiffDrive object with the configuration
+            /// \brief create a DiffDrive object with the wheel radius and track width
             /// \param radius - the wheel radius
             /// \param width - the distance between the wheels
             explicit DiffDrive(double radius, double width);
 
-            /// \brief create a DiffDrive object with the configuration, wheel angles,
-            /// and wheel velocities
+            /// \brief create a DiffDrive object with the wheel radius, track width,
+            /// and configuration
             /// \param radius - the wheel radius
             /// \param width - the distance between the wheels
             /// \param config - the configuration of the robot
@@ -81,7 +81,7 @@ namespace turtlelib {
 
             /// \brief update the configuration of the robot
             /// \param angle - the new wheel angles
-            /// \return the updated configuration
+            /// \return none
             void forward_kinematics(WheelAngle angle);
 
             /// \brief the configuration of the robot
