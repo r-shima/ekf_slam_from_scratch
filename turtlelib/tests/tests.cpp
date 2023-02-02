@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "turtlelib/rigid2d.hpp"
+#include "turtlelib/diff_drive.hpp"
 #include <sstream>
 
 TEST_CASE("Inverse", "[transform]") { // Katie, Hughes
@@ -190,4 +191,94 @@ TEST_CASE("Integrate Twist, Simultaneous Translation and Rotation", "[rigid2d]")
     REQUIRE_THAT(tran.x, Catch::Matchers::WithinAbs(2.26404, 1.0e-5));
     REQUIRE_THAT(tran.y, Catch::Matchers::WithinAbs(7.26651, 1.0e-5));
     REQUIRE_THAT(theta, Catch::Matchers::WithinAbs(0.785398, 1.0e-5));
+}
+
+TEST_CASE("Inverse Kinematics, Driving Forward", "[diff_drive]") {
+    turtlelib::Twist2D twist;
+    twist.w = 0.0;
+    twist.x = 1.0;
+    twist.y = 0.0;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    turtlelib::WheelVelocity vel = d.inverse_kinematics(twist);
+    REQUIRE_THAT(vel.l, Catch::Matchers::WithinAbs(1.0, 1.0e-5));
+    REQUIRE_THAT(vel.r, Catch::Matchers::WithinAbs(1.0, 1.0e-5));
+}
+
+TEST_CASE("Inverse Kinematics, Pure Rotation", "[diff_drive]") {
+    turtlelib::Twist2D twist;
+    twist.w = turtlelib::PI;
+    twist.x = 0.0;
+    twist.y = 0.0;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    turtlelib::WheelVelocity vel = d.inverse_kinematics(twist);
+    REQUIRE_THAT(vel.l, Catch::Matchers::WithinAbs(-6.2831853072, 1.0e-5));
+    REQUIRE_THAT(vel.r, Catch::Matchers::WithinAbs(6.2831853072, 1.0e-5));
+}
+
+TEST_CASE("Inverse Kinematics, Following Arc of a Circle", "[diff_drive]") {
+    turtlelib::Twist2D twist;
+    twist.w = turtlelib::PI;
+    twist.x = 1.0;
+    twist.y = 0.0;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    turtlelib::WheelVelocity vel = d.inverse_kinematics(twist);
+    REQUIRE_THAT(vel.l, Catch::Matchers::WithinAbs(-5.2831853072, 1.0e-5));
+    REQUIRE_THAT(vel.r, Catch::Matchers::WithinAbs(7.2831853072, 1.0e-5));
+}
+
+TEST_CASE("Inverse Kinematics, Impossible-to-follow Twist", "[diff_drive]") {
+    turtlelib::Twist2D twist;
+    twist.w = turtlelib::PI;
+    twist.x = 1.0;
+    twist.y = 3.0;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    turtlelib::WheelVelocity vel;
+    REQUIRE_THROWS(vel = d.inverse_kinematics(twist));
+}
+
+TEST_CASE("Forward Kinematics, Driving Forward", "[diff_drive]") {
+    turtlelib::WheelAngle angle;
+    angle.l = turtlelib::PI;
+    angle.r = turtlelib::PI;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    d.forward_kinematics(angle);
+    REQUIRE_THAT(d.configuration().x, Catch::Matchers::WithinAbs(3.1415926536, 1.0e-5));
+    REQUIRE_THAT(d.configuration().y, Catch::Matchers::WithinAbs(0.0, 1.0e-5));
+    REQUIRE_THAT(d.configuration().theta, Catch::Matchers::WithinAbs(0.0, 1.0e-5));
+}
+
+TEST_CASE("Forward Kinematics, Pure Rotation", "[diff_drive]") {
+    turtlelib::WheelAngle angle;
+    angle.l = turtlelib::PI;
+    angle.r = -turtlelib::PI;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    d.forward_kinematics(angle);
+    REQUIRE_THAT(d.configuration().x, Catch::Matchers::WithinAbs(0.0, 1.0e-5));
+    REQUIRE_THAT(d.configuration().y, Catch::Matchers::WithinAbs(0.0, 1.0e-5));
+    REQUIRE_THAT(d.configuration().theta, Catch::Matchers::WithinAbs(-1.5707963268, 1.0e-5));
+}
+
+TEST_CASE("Forward Kinematics, Following Arc of a Circle", "[diff_drive]") {
+    turtlelib::WheelAngle angle;
+    angle.l = turtlelib::PI;
+    angle.r = turtlelib::PI / 2;
+    double radius = 1.0;
+    double width = 4.0;
+    turtlelib::DiffDrive d = turtlelib::DiffDrive(radius, width);
+    d.forward_kinematics(angle);
+    REQUIRE_THAT(d.configuration().x, Catch::Matchers::WithinAbs(2.2961005942, 1.0e-5));
+    REQUIRE_THAT(d.configuration().y, Catch::Matchers::WithinAbs(-0.4567228049, 1.0e-5));
+    REQUIRE_THAT(d.configuration().theta, Catch::Matchers::WithinAbs(-0.3926990817, 1.0e-5));
 }
