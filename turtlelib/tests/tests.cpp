@@ -158,7 +158,7 @@ TEST_CASE("Angle", "[rigid2d]") {
     REQUIRE_THAT(turtlelib::angle(vec1, vec2), Catch::Matchers::WithinAbs(0.28379, 1.0e-5));
 }
 
-TEST_CASE("Integrate Twist - Pure Translation", "[rigid2d]") {
+TEST_CASE("Integrate Twist, Pure Translation", "[rigid2d]") {
     turtlelib::Twist2D twist;
     twist.w = 0.0;
     twist.x = 5.0;
@@ -169,7 +169,7 @@ TEST_CASE("Integrate Twist - Pure Translation", "[rigid2d]") {
     REQUIRE_THAT(tran.y, Catch::Matchers::WithinAbs(6.0, 1.0e-5));
 }
 
-TEST_CASE("Integrate Twist - Pure Rotation", "[rigid2d]") {
+TEST_CASE("Integrate Twist, Pure Rotation", "[rigid2d]") {
     turtlelib::Twist2D twist;
     twist.w = turtlelib::PI / 4;
     twist.x = 0.0;
@@ -179,7 +179,7 @@ TEST_CASE("Integrate Twist - Pure Rotation", "[rigid2d]") {
     REQUIRE_THAT(theta, Catch::Matchers::WithinAbs(0.785398, 1.0e-5));
 }
 
-TEST_CASE("Integrate Twist - Simultaneous Translation and Rotation", "[rigid2d]") {
+TEST_CASE("Integrate Twist, Simultaneous Translation and Rotation", "[rigid2d]") {
     turtlelib::Twist2D twist;
     twist.w = turtlelib::PI / 4;
     twist.x = 5.0;
