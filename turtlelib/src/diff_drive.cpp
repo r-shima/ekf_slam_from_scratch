@@ -61,9 +61,9 @@ namespace turtlelib {
         q.y = T_wbp.translation().y;
         q.theta = normalize_angle(T_wbp.rotation());
 
-        // This also works
-        // q.x = q.x + cos(q.theta) * T_bbp.translation().x - sin(q.theta) * T_bbp.translation().y;
-        // q.y = q.y + sin(q.theta) * T_bbp.translation().x + cos(q.theta) * T_bbp.translation().y;
+        // This also works (refer to equation (5))
+        // q.x = q.x + T_bbp.translation().x * cos(q.theta) - T_bbp.translation().y * sin(q.theta);
+        // q.y = q.y + T_bbp.translation().x * sin(q.theta) + T_bbp.translation().y * cos(q.theta);
         // q.theta = normalize_angle(T_bbp.rotation());
     }
 
