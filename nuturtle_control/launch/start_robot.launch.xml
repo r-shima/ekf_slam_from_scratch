@@ -1,0 +1,10 @@
+<launch>
+    <arg name="cmd_src" default="circle" description="Lets the user set it to 'circle' to start the circle node, 'teleop' to start the teleop_twist_keyboard, and 'none' to start nothing"/>
+    <arg name="robot" default="nusim" description="Lets the user set it to 'nusim' to start the nusim simulator, 'localhost' to run the nodes directly from the turtlebot3, and 'none' to not launch any additional nodes"/>
+    <arg name="use_rviz" default="true" description="Determines whether or not to launch rviz with a configuration that enables seeing the robot model, tf frames, and the odometry"/>
+
+    <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control"/>
+    <!-- <node pkg="nuturtle_control" exec="circle" name="circle" if="$(eval '\'$(var cmd_src)\' == \'circle\'')"/> -->
+    <node pkg="teleop_twist_keyboard" exec="teleop_twist_keyboard" name="teleop" output="screen" launch-prefix="xterm -e" if="$(eval '\'$(var cmd_src)\' == \'teleop\'')"/>
+    <node pkg="rviz2" exec="rviz2" name="rviz2" if="$(eval '\'$(var use_rviz)\' == \'true\'')"/>
+</launch>
