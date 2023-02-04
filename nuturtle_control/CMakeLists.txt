@@ -10,6 +10,7 @@ find_package(rclcpp REQUIRED)
 find_package(nuturtlebot_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(turtlelib REQUIRED)
 
 add_executable(turtle_control src/turtle_control.cpp)
 
@@ -18,6 +19,8 @@ ament_target_dependencies(turtle_control
   nuturtlebot_msgs
   sensor_msgs
   geometry_msgs)
+
+target_link_libraries(turtle_control turtlelib::turtlelib)
 
 install(TARGETS
   turtle_control

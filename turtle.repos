@@ -1,0 +1,9 @@
+repositories:
+  nuturtle-r-shima:
+    type: git
+    url: git@github.com:ME495-Navigation/nuturtle-r-shima.git
+    version: main
+  nuturtlebot_msgs:
+    type: git
+    url: https://github.com/ME495-Navigation/nuturtlebot_msgs.git
+    version: humble

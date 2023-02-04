@@ -49,9 +49,9 @@ add_test(NAME Test_of_Turtlelib COMMAND turtlelib_test)
 
 install(DIRECTORY include/turtlelib DESTINATION include)
 
-install(TARGETS frame_main turtlelib EXPORT project_name-targets)
+install(TARGETS frame_main turtlelib EXPORT turtlelib-targets)
   
-install(EXPORT project_name-targets
-        FILE project_name-targets.cmake
-        NAMESPACE project_name::
+install(EXPORT turtlelib-targets
+        FILE turtlelib-config.cmake
+        NAMESPACE turtlelib::
         DESTINATION lib/cmake/${PROJECT_NAME})
