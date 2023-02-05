@@ -16,7 +16,7 @@ public:
   {
     declare_parameter("frequency", 100);
     frequency_ = get_parameter("frequency").get_parameter_value().get<int>();
-    cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("wheel_cmd", 10);
+    cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / frequency_),
       std::bind(&Circle::timer_callback, this));
@@ -64,15 +64,12 @@ private:
     flag_ = 0;
     twist_.linear.x = 0.0;
     twist_.angular.z = 0.0;
+    cmd_vel_pub_->publish(twist_);
   }
 
   void timer_callback() {
     if(flag_ == 1) {
         cmd_vel_pub_->publish(twist_);
-    }
-    else {
-        cmd_vel_pub_->publish(twist_);
-        flag_ = -1;
     }
   }
 
