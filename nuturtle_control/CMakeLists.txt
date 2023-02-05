@@ -57,6 +57,7 @@ install(TARGETS
   DESTINATION lib/${PROJECT_NAME})
 
 install(DIRECTORY
+  config
   launch
   DESTINATION share/nuturtle_control/
 )

@@ -51,7 +51,7 @@ public:
 
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
-    check_params();
+    // check_params();
   }
 
 private:
@@ -66,8 +66,8 @@ private:
 
   void joint_states_callback(const sensor_msgs::msg::JointState & msg) {
     if(msg.position.size() >= 2) {
-        angle_.l = msg.position[0];
-        angle_.r = msg.position[1];
+        angle_.l = msg.position.at(0);
+        angle_.r = msg.position.at(1);
         diff_drive_.forward_kinematics(angle_);
     }
   }
@@ -95,6 +95,8 @@ private:
     t_.transform.rotation.z = q.z();
     t_.transform.rotation.w = q.w();
 
+    tf_broadcaster_->sendTransform(t_);
+
     turtlelib::Twist2D twist = diff_drive_.twist_to_angles(angle_);
     odom_.header.stamp = this->get_clock()->now();
     odom_.header.frame_id = odom_id_;
@@ -110,7 +112,6 @@ private:
     odom_.pose.pose.orientation.z = q.z();
     odom_.pose.pose.orientation.w = q.w();
 
-    tf_broadcaster_->sendTransform(t_);
     odom_pub_->publish(odom_);
   }
 
