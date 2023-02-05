@@ -65,9 +65,11 @@ private:
   }
 
   void joint_states_callback(const sensor_msgs::msg::JointState & msg) {
-    angle_.l = msg.position[0];
-    angle_.r = msg.position[1];
-    diff_drive_.forward_kinematics(angle_);
+    if(msg.position.size() >= 2) {
+        angle_.l = msg.position[0];
+        angle_.r = msg.position[1];
+        diff_drive_.forward_kinematics(angle_);
+    }
   }
 
   void initial_pose_callback(const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
@@ -93,12 +95,15 @@ private:
     t_.transform.rotation.z = q.z();
     t_.transform.rotation.w = q.w();
 
+    turtlelib::Twist2D twist = diff_drive_.twist_to_angles(angle_);
     odom_.header.stamp = this->get_clock()->now();
     odom_.header.frame_id = odom_id_;
     odom_.child_frame_id = body_id_;
     odom_.pose.pose.position.x = diff_drive_.configuration().x;
     odom_.pose.pose.position.y = diff_drive_.configuration().y;
     odom_.pose.pose.position.z = 0.0;
+    odom_.twist.twist.linear.x = twist.x;
+    odom_.twist.twist.angular.z = twist.w;
 
     odom_.pose.pose.orientation.x = q.x();
     odom_.pose.pose.orientation.y = q.y();

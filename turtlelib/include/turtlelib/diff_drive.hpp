@@ -87,6 +87,11 @@ namespace turtlelib {
             /// \brief the configuration of the robot
             /// \return the x, y, and theta of the configuration
             Config configuration() const;
+
+            /// \brief calculate the twist from wheel angles
+            /// \param angle - the new wheel angles
+            /// \return the twist
+            Twist2D twist_to_angles(WheelAngle angle);
     };
 }
 

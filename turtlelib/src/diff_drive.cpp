@@ -70,4 +70,11 @@ namespace turtlelib {
     Config DiffDrive::configuration() const {
         return q;
     }
+
+    Twist2D DiffDrive::twist_to_angles(WheelAngle angle) {
+        phi_dot.l = angle.l - phi.l;
+        phi_dot.r = angle.r - phi.r;
+        Twist2D twist = get_twist(phi_dot);
+        return twist;
+    }
 }
