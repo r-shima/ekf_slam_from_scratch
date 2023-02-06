@@ -51,7 +51,7 @@ public:
 
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
-    // check_params();
+    check_params();
   }
 
 private:

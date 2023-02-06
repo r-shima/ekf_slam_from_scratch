@@ -100,10 +100,6 @@ public:
         std::placeholders::_2));
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
-    // Store the initial location of the robot
-    // x_init_ = x0_;
-    // y_init_ = y0_;
-    // theta_init_ = theta0_;
     x_ = x0_;
     y_ = y0_;
     theta_ = theta0_;

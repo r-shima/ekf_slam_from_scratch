@@ -39,7 +39,6 @@ public:
       "sensor_data", 10, std::bind(&TurtleControl::sensor_data_callback, this, std::placeholders::_1));
     timer_ = create_wall_timer(
       500ms, std::bind(&TurtleControl::timer_callback, this));
-    prev_stamp_ = -1.0;
 
     check_params();
   }
@@ -83,19 +82,39 @@ private:
     joint_state_.header.stamp = msg.stamp;
     joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
 
-    double dt;
-    if(prev_stamp_ == -1.0) {
-        joint_state_.position = {0.0, 0.0};
-        joint_state_.velocity = {0.0, 0.0};
+    // double dt;
+    // if(prev_stamp_ == -1.0) {
+    //     joint_state_.position = {0.0, 0.0};
+    //     joint_state_.velocity = {0.0, 0.0};
+    // }
+    // else {
+    //     dt = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
+    //     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
+    //                              msg.right_encoder / encoder_ticks_per_rad_};
+    //     joint_state_.velocity = {joint_state_.position[0] / dt, 
+    //                              joint_state_.position[1] / dt};
+    // }
+    // prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
+
+    if(turtlelib::almost_equal(msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_, 0.0)) {
+        time_diff_ = time_diff_;
     }
     else {
-        dt = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
-        joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
-                                 msg.right_encoder / encoder_ticks_per_rad_};
-        joint_state_.velocity = {joint_state_.position[0] / dt, 
-                                 joint_state_.position[1] / dt};
+        time_diff_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
     }
     prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
+
+    if (time_flag_ == -1.0) {
+        joint_state_.position = {0.0, 0.0};
+        joint_state_.velocity = {0.0, 0.0};
+        time_flag_ = 0.0;
+    }
+    else {
+        joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
+                                 msg.right_encoder / encoder_ticks_per_rad_};
+        joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
+                                 joint_state_.position[1] / time_diff_};
+    }
   }
   
   void timer_callback() {
@@ -110,13 +129,12 @@ private:
   rclcpp::Subscription<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   
-  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_;
+  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_, time_diff_, prev_stamp_, time_flag_;
   int motor_cmd_max_;
   turtlelib::Twist2D twist_;
   turtlelib::WheelVelocity vel_;
   nuturtlebot_msgs::msg::WheelCommands wheel_commands_;
   sensor_msgs::msg::JointState joint_state_;
-  double prev_stamp_;
 };
 
 /// \brief The main function
