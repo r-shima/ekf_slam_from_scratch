@@ -31,6 +31,9 @@
 #include "tf2_ros/transform_broadcaster.h"
 #include "nusim/srv/teleport.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
+#include "turtlelib/diff_drive.hpp"
+#include "nuturtlebot_msgs/msg/wheel_commands.hpp"
+#include "nuturtlebot_msgs/msg/sensor_data.hpp"
 
 /// \brief Creates a simulation environment for the turtlebot
 class Nusim : public rclcpp::Node
@@ -50,12 +53,12 @@ public:
     declare_parameter("obstacles.r", 0.038);
     declare_parameter("walls.x_length", 5.0);
     declare_parameter("walls.y_length", 5.0);
-    declare_parameter("wheel_radius", -1.0);
-    declare_parameter("track_width", -1.0);
-    declare_parameter("motor_cmd_max", -1);
-    declare_parameter("motor_cmd_per_rad_sec", -1.0);
-    declare_parameter("encoder_ticks_per_rad", -1.0);
-    declare_parameter("collision_radius", -1.0);
+    // declare_parameter("wheel_radius", -1.0);
+    // declare_parameter("track_width", -1.0);
+    // declare_parameter("motor_cmd_max", -1);
+    // declare_parameter("motor_cmd_per_rad_sec", -1.0);
+    // declare_parameter("encoder_ticks_per_rad", -1.0);
+    // declare_parameter("collision_radius", -1.0);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -65,18 +68,19 @@ public:
     obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
     walls_x_length_ = get_parameter("walls.x_length").get_parameter_value().get<double>();
     walls_y_length_ = get_parameter("walls.y_length").get_parameter_value().get<double>();
-    wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
-    track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
-    motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
-    motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
-    encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
-    collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
+    // wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
+    // track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
+    // motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
+    // motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
+    // encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
+    // collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
-    wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
-      "red/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this,
-      std::placeholders::_1));
+    // sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
+    // wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+    //   "red/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this,
+    //   std::placeholders::_1));
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / rate_),
       std::bind(&Nusim::timer_callback, this));
@@ -100,6 +104,15 @@ public:
     x_init_ = x0_;
     y_init_ = y0_;
     theta_init_ = theta0_;
+
+    thickness_ = 0.15;
+    position_x_ = {walls_x_length_ / 2 + thickness_ / 2, -walls_x_length_ / 2 - thickness_ / 2,
+                   0.0, 0.0};
+    position_y_ = {0.0, 0.0, walls_y_length_ / 2 + thickness_ / 2,
+                   -walls_y_length_ / 2 - thickness_ / 2};
+    scale_x_ = {thickness_, thickness_, walls_x_length_ + 2.0 * thickness_,
+                walls_x_length_ + 2.0 * thickness_};
+    scale_y_ = {walls_y_length_, walls_y_length_, thickness_, thickness_};
 
     check_params();
     add_obstacles();
@@ -136,6 +149,7 @@ private:
     tf_broadcaster_->sendTransform(t);
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
+    // sensor_data_pub_->publish(sensor_data_);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -168,11 +182,20 @@ private:
     theta0_ = request->theta;
   }
 
-  void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
-    left_vel = msg.left_velocity;
-    right_vel = msg.right_velocity;
-    wheel_vel.l = 
-  }
+//   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
+//     sensor_data_.stamp = this->get_clock()->now();
+//     sensor_data_.left_encoder = msg.left_velocity;
+//     sensor_data_.right_encoder = msg.right_velocity;
+//     angle_.l = msg.left_velocity / encoder_ticks_per_rad_;
+//     angle_.r = msg.right_velocity / encoder_ticks_per_rad_;
+//     diff_drive_.forward_kinematics(angle_);
+//     x_ = diff_drive_.configuration().x;
+//     y_ = diff_drive_.configuration().y;
+//     theta_ = diff_drive_.configuration().theta;
+//     x0_ = x_;
+//     y0_ = y_;
+//     theta0_ = theta_;
+//   }
 
   void check_params() {
     if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
@@ -188,8 +211,7 @@ private:
   ///
   /// \param none
   /// \returns none
-  void add_obstacles()
-  {
+  void add_obstacles() {
     const auto marker_array_size = obstacles_x_.size();
 
     if (obstacles_x_.size() != obstacles_y_.size()) {
@@ -219,46 +241,24 @@ private:
 
   void add_walls()
   {
-    double thickness = 0.15;
-    wall_array_.markers.resize(4);
-
     for (int i = 0; i < 4; i++) {
-        wall_array_.markers.at(i).header.frame_id = "nusim/world";
-        wall_array_.markers.at(i).header.stamp = this->get_clock()->now();
-        wall_array_.markers.at(i).id = i;
-        wall_array_.markers.at(i).type = visualization_msgs::msg::Marker::CUBE;
-        wall_array_.markers.at(i).action = visualization_msgs::msg::Marker::ADD;
-        wall_array_.markers.at(i).color.r = 0.3;
-        wall_array_.markers.at(i).color.g = 0.5;
-        wall_array_.markers.at(i).color.b = 1.0;
-        wall_array_.markers.at(i).color.a = 1.0;
-        wall_array_.markers.at(i).pose.position.z = 0.125;
-        wall_array_.markers.at(i).scale.z = 0.25;
-
-        if (i == 0) {
-            wall_array_.markers.at(i).pose.position.x = walls_x_length_ / 2 + thickness / 2;
-            wall_array_.markers.at(i).pose.position.y = 0.0;
-            wall_array_.markers.at(i).scale.x = thickness;
-            wall_array_.markers.at(i).scale.y = walls_y_length_;
-        }
-        else if (i == 1) {
-            wall_array_.markers.at(i).pose.position.x = -walls_x_length_ / 2 - thickness / 2;
-            wall_array_.markers.at(i).pose.position.y = 0.0;
-            wall_array_.markers.at(i).scale.x = thickness;
-            wall_array_.markers.at(i).scale.y = walls_y_length_ + 2.0 * thickness;
-        }
-        else if (i == 2) {
-            wall_array_.markers.at(i).pose.position.x = 0.0;
-            wall_array_.markers.at(i).pose.position.y = walls_y_length_ / 2 + thickness / 2;
-            wall_array_.markers.at(i).scale.x = walls_x_length_;
-            wall_array_.markers.at(i).scale.y = thickness;
-        }
-        else if (i == 3) {
-            wall_array_.markers.at(i).pose.position.x = 0.0;
-            wall_array_.markers.at(i).pose.position.y = -walls_y_length_ / 2 - thickness / 2;
-            wall_array_.markers.at(i).scale.x = walls_x_length_ + 2.0 * thickness;
-            wall_array_.markers.at(i).scale.y = thickness;
-        }
+        visualization_msgs::msg::Marker wall_marker;
+        wall_marker.header.frame_id = "nusim/world";
+        wall_marker.header.stamp = this->get_clock()->now();
+        wall_marker.id = i;
+        wall_marker.type = visualization_msgs::msg::Marker::CUBE;
+        wall_marker.action = visualization_msgs::msg::Marker::ADD;
+        wall_marker.pose.position.x = position_x_.at(i);
+        wall_marker.pose.position.y = position_y_.at(i);
+        wall_marker.scale.x = scale_x_.at(i);
+        wall_marker.scale.y = scale_y_.at(i);
+        wall_marker.color.r = 0.3;
+        wall_marker.color.g = 0.5;
+        wall_marker.color.b = 1.0;
+        wall_marker.color.a = 1.0;
+        wall_marker.pose.position.z = 0.125;
+        wall_marker.scale.z = 0.25;
+        wall_array_.markers.push_back(wall_marker);
     }
   }
 
@@ -266,7 +266,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
-  rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
+//   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
+//   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
@@ -280,11 +281,15 @@ private:
   std::vector<double> obstacles_x_, obstacles_y_;
   double obstacles_r_, walls_x_length_, walls_y_length_;
   visualization_msgs::msg::MarkerArray marker_array_;
+  std::vector<double> position_x_, position_y_, scale_x_, scale_y_;
   visualization_msgs::msg::MarkerArray wall_array_;
-  int32_t left_vel, right_vel;
-  turtlelib::WheelVelocity wheel_vel;
+  double thickness_;
+  turtlelib::WheelAngle angle_;
   double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_;
   int motor_cmd_max_;
+  nuturtlebot_msgs::msg::SensorData sensor_data_;
+  turtlelib::DiffDrive diff_drive_;
+  double x_, y_, theta_;
 };
 
 /// \brief The main function
