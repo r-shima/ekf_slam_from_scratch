@@ -50,6 +50,12 @@ public:
     declare_parameter("obstacles.r", 0.038);
     declare_parameter("walls.x_length", 5.0);
     declare_parameter("walls.y_length", 5.0);
+    declare_parameter("wheel_radius", -1.0);
+    declare_parameter("track_width", -1.0);
+    declare_parameter("motor_cmd_max", -1);
+    declare_parameter("motor_cmd_per_rad_sec", -1.0);
+    declare_parameter("encoder_ticks_per_rad", -1.0);
+    declare_parameter("collision_radius", -1.0);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -59,9 +65,18 @@ public:
     obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
     walls_x_length_ = get_parameter("walls.x_length").get_parameter_value().get<double>();
     walls_y_length_ = get_parameter("walls.y_length").get_parameter_value().get<double>();
+    wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
+    track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
+    motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
+    motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
+    encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
+    collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
+    wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+      "red/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this,
+      std::placeholders::_1));
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / rate_),
       std::bind(&Nusim::timer_callback, this));
@@ -86,6 +101,7 @@ public:
     y_init_ = y0_;
     theta_init_ = theta0_;
 
+    check_params();
     add_obstacles();
     add_walls();
   }
@@ -150,6 +166,22 @@ private:
     x0_ = request->x;
     y0_ = request->y;
     theta0_ = request->theta;
+  }
+
+  void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
+    left_vel = msg.left_velocity;
+    right_vel = msg.right_velocity;
+    wheel_vel.l = 
+  }
+
+  void check_params() {
+    if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
+       motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
+       collision_radius_ == -1.0) {
+        int num = 0;
+        RCLCPP_ERROR(this->get_logger(), "The parameters are not defined");
+        throw num;
+    }
   }
 
   /// \brief Creates markers for the cylindrical obstacles and adds them to a marker array
@@ -234,6 +266,7 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
+  rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
@@ -248,6 +281,10 @@ private:
   double obstacles_r_, walls_x_length_, walls_y_length_;
   visualization_msgs::msg::MarkerArray marker_array_;
   visualization_msgs::msg::MarkerArray wall_array_;
+  int32_t left_vel, right_vel;
+  turtlelib::WheelVelocity wheel_vel;
+  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_;
+  int motor_cmd_max_;
 };
 
 /// \brief The main function
