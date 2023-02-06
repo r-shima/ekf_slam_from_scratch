@@ -53,12 +53,12 @@ public:
     declare_parameter("obstacles.r", 0.038);
     declare_parameter("walls.x_length", 5.0);
     declare_parameter("walls.y_length", 5.0);
-    // declare_parameter("wheel_radius", -1.0);
-    // declare_parameter("track_width", -1.0);
-    // declare_parameter("motor_cmd_max", -1);
-    // declare_parameter("motor_cmd_per_rad_sec", -1.0);
-    // declare_parameter("encoder_ticks_per_rad", -1.0);
-    // declare_parameter("collision_radius", -1.0);
+    declare_parameter("wheel_radius", -1.0);
+    declare_parameter("track_width", -1.0);
+    declare_parameter("motor_cmd_max", -1);
+    declare_parameter("motor_cmd_per_rad_sec", -1.0);
+    declare_parameter("encoder_ticks_per_rad", -1.0);
+    declare_parameter("collision_radius", -1.0);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -68,19 +68,19 @@ public:
     obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
     walls_x_length_ = get_parameter("walls.x_length").get_parameter_value().get<double>();
     walls_y_length_ = get_parameter("walls.y_length").get_parameter_value().get<double>();
-    // wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
-    // track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
-    // motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
-    // motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
-    // encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
-    // collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
+    wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
+    track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
+    motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
+    motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
+    encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
+    collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
-    // sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
-    // wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
-    //   "red/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this,
-    //   std::placeholders::_1));
+    sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
+    wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
+      "red/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this,
+      std::placeholders::_1));
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / rate_),
       std::bind(&Nusim::timer_callback, this));
@@ -101,9 +101,12 @@ public:
     tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 
     // Store the initial location of the robot
-    x_init_ = x0_;
-    y_init_ = y0_;
-    theta_init_ = theta0_;
+    // x_init_ = x0_;
+    // y_init_ = y0_;
+    // theta_init_ = theta0_;
+    x_ = x0_;
+    y_ = y0_;
+    theta_ = theta0_;
 
     thickness_ = 0.15;
     position_x_ = {walls_x_length_ / 2 + thickness_ / 2, -walls_x_length_ / 2 - thickness_ / 2,
@@ -135,12 +138,12 @@ private:
     t.header.stamp = get_clock()->now();
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
-    t.transform.translation.x = x0_;
-    t.transform.translation.y = y0_;
+    t.transform.translation.x = x_;
+    t.transform.translation.y = y_;
     t.transform.translation.z = 0.0;
 
     tf2::Quaternion q;
-    q.setRPY(0, 0, theta0_);
+    q.setRPY(0, 0, theta_);
     t.transform.rotation.x = q.x();
     t.transform.rotation.y = q.y();
     t.transform.rotation.z = q.z();
@@ -149,7 +152,7 @@ private:
     tf_broadcaster_->sendTransform(t);
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
-    // sensor_data_pub_->publish(sensor_data_);
+    sensor_data_pub_->publish(sensor_data_);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -163,9 +166,9 @@ private:
     std::shared_ptr<std_srvs::srv::Empty::Response>)
   {
     timestep_ = 0;
-    x0_ = x_init_;
-    y0_ = y_init_;
-    theta0_ = theta_init_;
+    x_ = x0_;
+    y_ = y0_;
+    theta_ = theta0_;
   }
 
   /// \brief Callback function for the teleport service. Teleports the robot to a desired pose.
@@ -177,25 +180,25 @@ private:
     const std::shared_ptr<nusim::srv::Teleport::Request> request,
     std::shared_ptr<nusim::srv::Teleport::Response>)
   {
-    x0_ = request->x;
-    y0_ = request->y;
-    theta0_ = request->theta;
+    x_ = request->x;
+    y_ = request->y;
+    theta_ = request->theta;
   }
 
-//   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
-//     sensor_data_.stamp = this->get_clock()->now();
-//     sensor_data_.left_encoder = msg.left_velocity;
-//     sensor_data_.right_encoder = msg.right_velocity;
-//     angle_.l = msg.left_velocity / encoder_ticks_per_rad_;
-//     angle_.r = msg.right_velocity / encoder_ticks_per_rad_;
-//     diff_drive_.forward_kinematics(angle_);
-//     x_ = diff_drive_.configuration().x;
-//     y_ = diff_drive_.configuration().y;
-//     theta_ = diff_drive_.configuration().theta;
-//     x0_ = x_;
-//     y0_ = y_;
-//     theta0_ = theta_;
-//   }
+  void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
+    sensor_data_.stamp = this->get_clock()->now();
+    sensor_data_.left_encoder = msg.left_velocity;
+    sensor_data_.right_encoder = msg.right_velocity;
+    angle_.l = msg.left_velocity / encoder_ticks_per_rad_;
+    angle_.r = msg.right_velocity / encoder_ticks_per_rad_;
+    diff_drive_.forward_kinematics(angle_);
+    x_ = diff_drive_.configuration().x;
+    y_ = diff_drive_.configuration().y;
+    theta_ = diff_drive_.configuration().theta;
+    // x0_ = x_;
+    // y0_ = y_;
+    // theta0_ = theta_;
+  }
 
   void check_params() {
     if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
@@ -266,8 +269,8 @@ private:
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
-//   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
-//   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
+  rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
+  rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
@@ -277,7 +280,7 @@ private:
   // and theta components of the robot's initial location
   size_t timestep_;
   int rate_;
-  double x0_, y0_, theta0_, x_init_, y_init_, theta_init_;
+  double x0_, y0_, theta0_; // x_init_, y_init_, theta_init_
   std::vector<double> obstacles_x_, obstacles_y_;
   double obstacles_r_, walls_x_length_, walls_y_length_;
   visualization_msgs::msg::MarkerArray marker_array_;
