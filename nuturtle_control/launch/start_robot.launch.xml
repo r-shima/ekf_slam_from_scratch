@@ -25,7 +25,9 @@
 
     <node pkg="teleop_twist_keyboard" exec="teleop_twist_keyboard" name="teleop" output="screen" launch-prefix="xterm -e" if="$(eval '\'$(var cmd_src)\' == \'teleop\'')"/>
 
-    <include file="$(find-pkg-share nusim)/launch/nusim.launch.xml" if="$(eval '\'$(var robot)\' == \'nusim\'')"/>
+    <include file="$(find-pkg-share nusim)/launch/nusim.launch.xml" if="$(eval '\'$(var robot)\' == \'nusim\'')">
+        <arg name="rviz_file" value="$(find-pkg-share nuturtle_control)/config/nuturtle_control_blue_red.rviz"/>
+    </include>
     
     <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuturtle_control)/config/nuturtle_control.rviz" if="$(eval '\'$(var use_rviz)\' == \'true\'')"/>
 
