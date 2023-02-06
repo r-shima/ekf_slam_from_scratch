@@ -48,15 +48,20 @@ public:
     declare_parameter("obstacles.x", std::vector<double> {});
     declare_parameter("obstacles.y", std::vector<double> {});
     declare_parameter("obstacles.r", 0.038);
+    declare_parameter("walls.x_length", 5.0);
+    declare_parameter("walls.y_length", 5.0);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
     theta0_ = get_parameter("theta0").get_parameter_value().get<double>();
-    obstacles_x = get_parameter("obstacles.x").get_parameter_value().get<std::vector<double>>();
-    obstacles_y = get_parameter("obstacles.y").get_parameter_value().get<std::vector<double>>();
-    obstacles_r = get_parameter("obstacles.r").get_parameter_value().get<double>();
+    obstacles_x_ = get_parameter("obstacles.x").get_parameter_value().get<std::vector<double>>();
+    obstacles_y_ = get_parameter("obstacles.y").get_parameter_value().get<std::vector<double>>();
+    obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
+    walls_x_length_ = get_parameter("walls.x_length").get_parameter_value().get<double>();
+    walls_y_length_ = get_parameter("walls.y_length").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
+    wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / rate_),
       std::bind(&Nusim::timer_callback, this));
@@ -82,6 +87,7 @@ public:
     theta_init_ = theta0_;
 
     add_obstacles();
+    add_walls();
   }
 
 private:
@@ -113,6 +119,7 @@ private:
 
     tf_broadcaster_->sendTransform(t);
     marker_pub_->publish(marker_array_);
+    wall_marker_pub_->publish(wall_array_);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -151,27 +158,24 @@ private:
   /// \returns none
   void add_obstacles()
   {
-    int marker_array_size = obstacles_x.size();
-    int num = 0;
+    const auto marker_array_size = obstacles_x_.size();
 
-    if (obstacles_x.size() != obstacles_y.size()) {
-      RCLCPP_ERROR(
-        this->get_logger(),
-        "Obstacles' x and y coordinate lists do not have the same length");
-      throw num;
+    if (obstacles_x_.size() != obstacles_y_.size()) {
+      throw(std::runtime_error("Obstacles' x and y coordinate lists do not have the same length"));
     }
 
-    for (int i = 0; i < marker_array_size; i++) {
+    for (size_t i = 0; i < marker_array_size; i++) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "nusim/world";
+      marker.header.stamp = this->get_clock()->now();
       marker.id = i;
       marker.type = visualization_msgs::msg::Marker::CYLINDER;
       marker.action = visualization_msgs::msg::Marker::ADD;
-      marker.pose.position.x = obstacles_x[i];
-      marker.pose.position.y = obstacles_y[i];
+      marker.pose.position.x = obstacles_x_.at(i);
+      marker.pose.position.y = obstacles_y_.at(i);
       marker.pose.position.z = 0.125;
-      marker.scale.x = 2 * obstacles_r;
-      marker.scale.y = 2 * obstacles_r;
+      marker.scale.x = 2.0 * obstacles_r_;
+      marker.scale.y = 2.0 * obstacles_r_;
       marker.scale.z = 0.25;
       marker.color.r = 1.0;
       marker.color.g = 0.0;
@@ -181,9 +185,55 @@ private:
     }
   }
 
+  void add_walls()
+  {
+    double thickness = 0.15;
+    wall_array_.markers.resize(4);
+
+    for (int i = 0; i < 4; i++) {
+        wall_array_.markers.at(i).header.frame_id = "nusim/world";
+        wall_array_.markers.at(i).header.stamp = this->get_clock()->now();
+        wall_array_.markers.at(i).id = i;
+        wall_array_.markers.at(i).type = visualization_msgs::msg::Marker::CUBE;
+        wall_array_.markers.at(i).action = visualization_msgs::msg::Marker::ADD;
+        wall_array_.markers.at(i).color.r = 0.3;
+        wall_array_.markers.at(i).color.g = 0.5;
+        wall_array_.markers.at(i).color.b = 1.0;
+        wall_array_.markers.at(i).color.a = 1.0;
+        wall_array_.markers.at(i).pose.position.z = 0.125;
+        wall_array_.markers.at(i).scale.z = 0.25;
+
+        if (i == 0) {
+            wall_array_.markers.at(i).pose.position.x = walls_x_length_ / 2 + thickness / 2;
+            wall_array_.markers.at(i).pose.position.y = 0.0;
+            wall_array_.markers.at(i).scale.x = thickness;
+            wall_array_.markers.at(i).scale.y = walls_y_length_;
+        }
+        else if (i == 1) {
+            wall_array_.markers.at(i).pose.position.x = -walls_x_length_ / 2 - thickness / 2;
+            wall_array_.markers.at(i).pose.position.y = 0.0;
+            wall_array_.markers.at(i).scale.x = thickness;
+            wall_array_.markers.at(i).scale.y = walls_y_length_ + 2.0 * thickness;
+        }
+        else if (i == 2) {
+            wall_array_.markers.at(i).pose.position.x = 0.0;
+            wall_array_.markers.at(i).pose.position.y = walls_y_length_ / 2 + thickness / 2;
+            wall_array_.markers.at(i).scale.x = walls_x_length_;
+            wall_array_.markers.at(i).scale.y = thickness;
+        }
+        else if (i == 3) {
+            wall_array_.markers.at(i).pose.position.x = 0.0;
+            wall_array_.markers.at(i).pose.position.y = -walls_y_length_ / 2 - thickness / 2;
+            wall_array_.markers.at(i).scale.x = walls_x_length_ + 2.0 * thickness;
+            wall_array_.markers.at(i).scale.y = thickness;
+        }
+    }
+  }
+
   // Declare private variables for the publishers, a timer, services, and a broadcaster
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
@@ -194,22 +244,17 @@ private:
   size_t timestep_;
   int rate_;
   double x0_, y0_, theta0_, x_init_, y_init_, theta_init_;
-  std::vector<double> obstacles_x, obstacles_y;
-  double obstacles_r;
+  std::vector<double> obstacles_x_, obstacles_y_;
+  double obstacles_r_, walls_x_length_, walls_y_length_;
   visualization_msgs::msg::MarkerArray marker_array_;
+  visualization_msgs::msg::MarkerArray wall_array_;
 };
 
 /// \brief The main function
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  try {
-    rclcpp::spin(std::make_shared<Nusim>());
-  } catch (int num) {
-    RCLCPP_ERROR(
-      std::make_shared<Nusim>()->get_logger(),
-      "Obstacles' x and y coordinate lists do not have the same length");
-  }
+  rclcpp::spin(std::make_shared<Nusim>());
   rclcpp::shutdown();
   return 0;
 }
