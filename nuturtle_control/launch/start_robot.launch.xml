@@ -9,10 +9,14 @@
 
     <node pkg="numsr_turtlebot" exec="numsr_turtlebot" name="numsr_turtlebot" if="$(eval '\'$(var robot)\' == \'localhost\'')"/>
 
-    <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control">
+    <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control" if="$(eval '\'$(var robot)\' != \'localhost\'')">
         <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
         <remap from="/wheel_cmd" to="red/wheel_cmd"/>
         <remap from="/sensor_data" to="red/sensor_data"/>
+    </node>
+    
+    <node pkg="nuturtle_control" exec="turtle_control" name="turtle_control" if="$(eval '\'$(var robot)\' == \'localhost\'')">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
     </node>
 
     <node pkg="nuturtle_control" exec="odometry" name="odometry">

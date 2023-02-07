@@ -148,7 +148,7 @@ private:
     tf_broadcaster_->sendTransform(t);
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
-    sensor_data_pub_->publish(sensor_data_);
+    // sensor_data_pub_->publish(sensor_data_);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -194,6 +194,7 @@ private:
     // x0_ = x_;
     // y0_ = y_;
     // theta0_ = theta_;
+    sensor_data_pub_->publish(sensor_data_);
   }
 
   void check_params() {

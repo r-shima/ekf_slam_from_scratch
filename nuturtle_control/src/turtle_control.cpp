@@ -40,7 +40,7 @@ public:
     timer_ = create_wall_timer(
       500ms, std::bind(&TurtleControl::timer_callback, this));
 
-    check_params();
+    // check_params();
   }
 
 private:
@@ -76,6 +76,8 @@ private:
     else if(wheel_commands_.right_velocity < -motor_cmd_max_) {
         wheel_commands_.right_velocity = -motor_cmd_max_;
     }
+
+    wheel_cmd_pub_->publish(wheel_commands_);
   }
   
   void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg) {
@@ -115,11 +117,13 @@ private:
         joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
                                  joint_state_.position[1] / time_diff_};
     }
+
+    joint_states_pub_->publish(joint_state_);
   }
   
   void timer_callback() {
-    wheel_cmd_pub_->publish(wheel_commands_);
-    joint_states_pub_->publish(joint_state_);
+    // joint_states_pub_->publish(joint_state_);
+    // wheel_cmd_pub_->publish(wheel_commands_);
   }
 
   // Declare private variables for the publishers, subscribers, and a timer

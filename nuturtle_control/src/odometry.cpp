@@ -51,7 +51,7 @@ public:
 
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
-    check_params();
+    // check_params();
   }
 
 private:
@@ -70,6 +70,39 @@ private:
         angle_.r = msg.position.at(1);
         diff_drive_.forward_kinematics(angle_);
     }
+
+    t_.header.stamp = this->get_clock()->now();
+    t_.header.frame_id = odom_id_;
+    t_.child_frame_id = body_id_;
+    t_.transform.translation.x = diff_drive_.configuration().x;
+    t_.transform.translation.y = diff_drive_.configuration().y;
+    t_.transform.translation.z = 0.0;
+
+    tf2::Quaternion q;
+    q.setRPY(0, 0, diff_drive_.configuration().theta);
+    t_.transform.rotation.x = q.x();
+    t_.transform.rotation.y = q.y();
+    t_.transform.rotation.z = q.z();
+    t_.transform.rotation.w = q.w();
+
+    tf_broadcaster_->sendTransform(t_);
+
+    turtlelib::Twist2D twist = diff_drive_.twist_to_angles(angle_);
+    odom_.header.stamp = this->get_clock()->now();
+    odom_.header.frame_id = odom_id_;
+    odom_.child_frame_id = body_id_;
+    odom_.pose.pose.position.x = diff_drive_.configuration().x;
+    odom_.pose.pose.position.y = diff_drive_.configuration().y;
+    odom_.pose.pose.position.z = 0.0;
+    odom_.twist.twist.linear.x = twist.x;
+    odom_.twist.twist.angular.z = twist.w;
+
+    odom_.pose.pose.orientation.x = q.x();
+    odom_.pose.pose.orientation.y = q.y();
+    odom_.pose.pose.orientation.z = q.z();
+    odom_.pose.pose.orientation.w = q.w();
+
+    odom_pub_->publish(odom_);
   }
 
   void initial_pose_callback(const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
