@@ -80,6 +80,7 @@ private:
     }
 
     wheel_cmd_pub_->publish(wheel_commands_);
+    RCLCPP_INFO_STREAM(get_logger(), "Wheel commands in turtle_control: " << wheel_commands_.left_velocity << ", " << wheel_commands_.right_velocity);
   }
   
   void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg) {

@@ -216,6 +216,8 @@ private:
     // // theta0_ = theta_;
     // sensor_data_pub_->publish(sensor_data_);
 
+    RCLCPP_INFO_STREAM(get_logger(), "Wheel commands" << msg.left_velocity << ", " << msg.right_velocity);
+
     new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_;
     new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_;
     // temp_angle_.l = new_vel_.l * (1 / rate_);
