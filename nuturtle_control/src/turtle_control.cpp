@@ -1,3 +1,21 @@
+/// \file
+/// \brief This node enables control of the turtlebot via twist messages
+///
+/// PARAMETERS:
+///     wheel_radius (double): the radius of the wheels
+///     track_width (double): the distance between the wheels
+///     motor_cmd_max (int): the max motor command
+///     motor_cmd_per_rad_sec (double): the motor command "tick"
+///     encoder_ticks_per_rad (double): the number of encoder "ticks" per radian
+///     collision_radius (double): radius used for collision detection
+/// PUBLISHES:
+///     /wheel_cmd (nuturtlebot_msgs::msg::WheelCommands): left and right wheel velocity in "motor
+///                                                        command units"
+///     /joint_states (sensor_msgs::msg::JointState): data to describe the state of a set of joints
+/// SUBSCRIBES:
+///     /cmd_vel (geometry_msgs::msg::Twist): velocity broken into its linear and angular parts
+///     /sensor_data (nuturtlebot_msgs::msg::SensorData): sensor data
+
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -12,12 +30,14 @@
 
 using namespace std::chrono_literals;
 
+/// \brief Uses cmd_vel commands to move the robot and reads the sensor data
 class TurtleControl : public rclcpp::Node
 {
 public:
   TurtleControl()
   : Node("turtle_control")
   {
+    // Initializes variables for the parameters, publishers, and subscribers
     declare_parameter("wheel_radius", -1.0);
     declare_parameter("track_width", -1.0);
     declare_parameter("motor_cmd_max", -1);
@@ -37,25 +57,31 @@ public:
       "cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
     sensor_data_sub_ = create_subscription<nuturtlebot_msgs::msg::SensorData>(
       "sensor_data", 10, std::bind(&TurtleControl::sensor_data_callback, this, std::placeholders::_1));
-    timer_ = create_wall_timer(
-      500ms, std::bind(&TurtleControl::timer_callback, this));
 
     time_flag_ = 1.0;
 
-    // check_params();
+    check_params();
   }
 
 private:
+  /// \brief Checks if the parameters are specified
+  ///
+  /// \param none
+  /// \returns none
   void check_params() {
     if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
        motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
        collision_radius_ == -1.0) {
-        int num = 0;
-        RCLCPP_ERROR(this->get_logger(), "The parameters are not defined");
-        throw num;
+        throw(std::runtime_error("The parameters are not defined"));
     }
   }
   
+  /// \brief Callback function for the subscriber that subscribes to geometry_msgs/msg/Twist.
+  /// Uses the twist to calculate the wheel commands. Also limits the range of wheel commands and
+  /// publishes them.
+  ///
+  /// \param msg - Twist object
+  /// \returns none
   void cmd_vel_callback(const geometry_msgs::msg::Twist & msg) {
     twist_.w = msg.angular.z;
     twist_.x = msg.linear.x;
@@ -80,65 +106,15 @@ private:
     }
 
     wheel_cmd_pub_->publish(wheel_commands_);
-    RCLCPP_INFO_STREAM(get_logger(), "Wheel commands in turtle_control: " << wheel_commands_.left_velocity << ", " << wheel_commands_.right_velocity);
   }
-  
+
+  /// \brief Callback function for the subscriber that subscribes to
+  /// nuturtlebot_msgs/msg/SensorData. Converts positions to radians, calculates change in angle
+  /// over time, and publishes joint states.
+  ///
+  /// \param msg - SensorData object
+  /// \returns none
   void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg) {
-    // joint_state_.header.stamp = msg.stamp;
-    // joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
-
-    // double dt;
-    // if(prev_stamp_ == -1.0) {
-    //     joint_state_.position = {0.0, 0.0};
-    //     joint_state_.velocity = {0.0, 0.0};
-    // }
-    // else {
-    //     dt = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
-    //     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
-    //                              msg.right_encoder / encoder_ticks_per_rad_};
-    //     joint_state_.velocity = {joint_state_.position[0] / dt, 
-    //                              joint_state_.position[1] / dt};
-    // }
-    // prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
-
-    // if(turtlelib::almost_equal(msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_, 0.0)) {
-    //     time_diff_ = time_diff_;
-    // }
-    // else {
-    //     time_diff_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
-    // }
-    // prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
-
-    // if (time_flag_ == -1.0) {
-    //     joint_state_.position = {0.0, 0.0};
-    //     joint_state_.velocity = {0.0, 0.0};
-    //     time_flag_ = 0.0;
-    // }
-    // else {
-    //     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
-    //                              msg.right_encoder / encoder_ticks_per_rad_};
-    //     joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
-    //                              joint_state_.position[1] / time_diff_};
-    // }
-
-    // joint_states_pub_->publish(joint_state_);
-
-    // if (time_flag_ == 1.0) {
-    //     prev_time_.stamp = get_clock()->now();
-    //     time_flag_++;
-    // }
-    // else {
-    //     time_diff_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_time_.stamp.sec + 1e-9 * prev_time_.stamp.nanosec;
-    //     joint_state_.header.stamp = msg.stamp;
-    //     joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
-    //     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
-    //                              msg.right_encoder / encoder_ticks_per_rad_};
-    //     joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
-    //                              joint_state_.position[1] / time_diff_};
-    //     joint_states_pub_->publish(joint_state_);
-    //     prev_time_.stamp = msg.stamp;
-    // }
-
     if (time_flag_ == 1.0) {
         joint_state_.header.stamp = get_clock()->now();
         joint_state_.position = {0.0, 0.0};
@@ -164,13 +140,8 @@ private:
 
     joint_states_pub_->publish(temp);
   }
-  
-  void timer_callback() {
-    // joint_states_pub_->publish(joint_state_);
-    // wheel_cmd_pub_->publish(wheel_commands_);
-  }
 
-  // Declare private variables for the publishers, subscribers, and a timer
+  // Declare private variables
   rclcpp::Publisher<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_pub_;
   rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr joint_states_pub_;
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;

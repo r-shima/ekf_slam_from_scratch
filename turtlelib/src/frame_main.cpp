@@ -44,4 +44,6 @@ int main() {
     std::cout << "V_a: " << V_a << std::endl;
     std::cout << "V_b: " << V_b << std::endl;
     std::cout << "V_c: " << V_c << std::endl;
+
+    return 0;
 }

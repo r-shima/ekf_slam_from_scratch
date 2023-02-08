@@ -1,3 +1,20 @@
+/// \file
+/// \brief This node publishes odometry messages and the odometry transform
+///
+/// PARAMETERS:
+///     wheel_radius (double): the radius of the wheels
+///     track_width (double): the distance between the wheels
+///     body_id (std::string): the name of the body frame of the robot
+///     odom_id (std::string): the name of the odometry frame
+///     wheel_left (std::string): the name of the left wheel joint
+///     wheel_right (std::string): the name of the right wheel joint
+/// PUBLISHES:
+///     /odom (nav_msgs::msg::Odometry): an estimate of a position and velocity in free space
+/// SUBSCRIBES:
+///     /joint_states (sensor_msgs::msg::JointState): data to describe the state of a set of joints
+/// SERVERS:
+///     initial_pose (nuturtle_control::srv::InitialPose): resets the location of the odometry
+
 #include <chrono>
 #include <functional>
 #include <memory>
@@ -14,12 +31,15 @@
 
 using namespace std::chrono_literals;
 
+/// \brief Computes the odometry of the robot
 class Odometry : public rclcpp::Node
 {
 public:
   Odometry()
   : Node("odometry")
   {
+    // Initializes variables for the parameters, publisher, subscriber, timer, service, and
+    // broadcaster
     declare_parameter("wheel_radius", -1.0);
     declare_parameter("track_width", -1.0);
     declare_parameter("body_id", "");
@@ -53,28 +73,27 @@ public:
 
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
-    // check_params();
+    check_params();
   }
 
 private:
+  /// \brief Checks if the parameters are specified
+  ///
+  /// \param none
+  /// \returns none
   void check_params() {
     if(wheel_radius_ == -1.0 || track_width_ == -1.0 || body_id_ == "" || wheel_left_ == "" ||
        wheel_right_ == "") {
-        int num = 1;
-        RCLCPP_ERROR(this->get_logger(), "The parameters are not defined");
-        throw num;
+        throw(std::runtime_error("The parameters are not defined"));
     }
   }
 
+  /// \brief Callback function for the subscriber that subscribes to sensor_msgs/msg/JointState.
+  /// Updates the internal odometry state, broadcasts the transform, and publishes odometry.
+  ///
+  /// \param msg - JointState object
+  /// \returns none
   void joint_states_callback(const sensor_msgs::msg::JointState & msg) {
-    // if(msg.position.size() >= 2) {
-    //     angle_.l = msg.position.at(0) - prev_angle_.l;
-    //     angle_.r = msg.position.at(1) - prev_angle_.r;
-    //     diff_drive_.forward_kinematics(angle_);
-    //     prev_angle_.l = msg.position.at(0);
-    //     prev_angle_.r = msg.position.at(1);
-    // }
-
     angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
     angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
     diff_drive_.forward_kinematics(angle_);
@@ -115,6 +134,11 @@ private:
     prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
   }
 
+  /// \brief Callback function for the initial_pose. Resets the location of the odometry.
+  ///
+  /// \param request - x, y, and theta components of the initial pose
+  /// \param response - not being used
+  /// \returns none
   void initial_pose_callback(const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
     request, std::shared_ptr<nuturtle_control::srv::InitialPose::Response>) {
     config_.x = request->x;
@@ -123,6 +147,10 @@ private:
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_, config_};
   }
 
+  /// \brief Callback function for the timer. Broadcasts the transform and publishes odometry.
+  ///
+  /// \param none
+  /// \returns none
   void timer_callback() {
     t_.header.stamp = this->get_clock()->now();
     t_.header.frame_id = odom_id_;
@@ -158,7 +186,7 @@ private:
     odom_pub_->publish(odom_);
   }
 
-  // Declare private variables for the publisher and timer
+  // Declare private variables
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
   rclcpp::TimerBase::SharedPtr timer_;

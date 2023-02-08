@@ -1,5 +1,6 @@
 /// \file
 /// \brief This node displays a red turtlebot in a simulated environment with cylindrical obstacles
+/// and walls. It also allows the robot to move according to simulated kinematics.
 ///
 /// PARAMETERS:
 ///     rate (int): a frequency used to run the main loop
@@ -9,10 +10,23 @@
 ///     obstacles.x (std::vector<double>): a list of the obstacles' x coordinates
 ///     obstacles.y (std::vector<double>): a list of the obstacles' y coordinates
 ///     obstacles.r (double): the radius of the obstacles
+///     walls.x_length (double): the length of the arena in the world x direction
+///     walls.y_length (double): the length of the arena in the world y direction
+///     wheel_radius (double): the radius of the wheels
+///     track_width (double): the distance between the wheels
+///     motor_cmd_max (int): the max motor command
+///     motor_cmd_per_rad_sec (double): the motor command "tick"
+///     encoder_ticks_per_rad (double): the number of encoder "ticks" per radian
+///     collision_radius (double): radius used for collision detection
 /// PUBLISHES:
 ///     /nusim/timestep (std_msgs::msg::UInt64): the timestep for the simulation
 ///     /nusim/obstacles (visualization_msgs::msg::MarkerArray): cylinderical markers that act as
 ///                                                              the obstacles
+///     /nusim/walls (visualization_msgs::msg::MarkerArray): walls used to create an arena
+///     /red/sensor_data (nuturtlebot_msgs::msg::SensorData): sensor data
+/// SUBSCRIBES:
+///     /red/wheel_cmd (nuturtlebot_msgs::msg::WheelCommands): left and right wheel velocity in
+///                                                           "motor command units"
 /// SERVERS:
 ///     reset (std_srvs::srv::Empty): restores the initial state of the simulation and the robot's
 ///                                   initial location
@@ -43,7 +57,8 @@ public:
   : Node("nusim"),
     timestep_(0)
   {
-    // Initializes variables for the parameters, publishers, timer, services, and broadcaster
+    // Initializes variables for the parameters, publishers, subscriber, timer, services, and
+    // broadcaster
     declare_parameter("rate", 200);
     declare_parameter("x0", 0.0);
     declare_parameter("y0", 0.0);
@@ -120,7 +135,8 @@ public:
   }
 
 private:
-  /// \brief Callback function for the timer. Broadcasts the transform and publishes a marker array.
+  /// \brief Callback function for the timer. Broadcasts the transform and publishes sensor data
+  /// and marker arrays for the cylindrical obstacles and walls.
   ///
   /// \param none
   /// \returns none
@@ -149,11 +165,9 @@ private:
     tf_broadcaster_->sendTransform(t);
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
-    // sensor_data_pub_->publish(sensor_data_);
 
     temp_angle_.l = new_vel_.l * dt_;
     temp_angle_.r = new_vel_.r * dt_;
-    RCLCPP_INFO_STREAM(get_logger(), "Temp angle values: " << temp_angle_.l << ", " << temp_angle_.r);
     diff_drive_.forward_kinematics(temp_angle_);
     x_ = diff_drive_.configuration().x;
     y_ = diff_drive_.configuration().y;
@@ -164,7 +178,6 @@ private:
     sensor_data_.stamp = this->get_clock()->now();
     sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
     sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
-    RCLCPP_INFO_STREAM(get_logger(), "Encoder values: " << sensor_data_.left_encoder << ", " << sensor_data_.right_encoder);
     prev_angle_.l = angle_.l;
     prev_angle_.r = angle_.r;
 
@@ -201,50 +214,25 @@ private:
     theta_ = request->theta;
   }
 
+  /// \brief Callback function for the subscriber that subscribes to
+  /// nuturtlebot_msgs/msg/WheelCommands. Converts ticks to to rad per second.
+  ///
+  /// \param msg - WheelCommands object
+  /// \returns none
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
-    // sensor_data_.stamp = this->get_clock()->now();
-    // sensor_data_.left_encoder = msg.left_velocity;
-    // sensor_data_.right_encoder = msg.right_velocity;
-    // angle_.l = msg.left_velocity / encoder_ticks_per_rad_;
-    // angle_.r = msg.right_velocity / encoder_ticks_per_rad_;
-    // diff_drive_.forward_kinematics(angle_);
-    // x_ = diff_drive_.configuration().x;
-    // y_ = diff_drive_.configuration().y;
-    // theta_ = diff_drive_.configuration().theta;
-    // // x0_ = x_;
-    // // y0_ = y_;
-    // // theta0_ = theta_;
-    // sensor_data_pub_->publish(sensor_data_);
-
-    RCLCPP_INFO_STREAM(get_logger(), "Wheel commands" << msg.left_velocity << ", " << msg.right_velocity);
-
     new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_;
     new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_;
-    // temp_angle_.l = new_vel_.l * (1 / rate_);
-    // temp_angle_.r = new_vel_.r * (1 / rate_);
-    // diff_drive_.forward_kinematics(temp_angle_);
-    // x_ = diff_drive_.configuration().x;
-    // y_ = diff_drive_.configuration().y;
-    // theta_ = diff_drive_.configuration().theta;
-
-    // angle_.l = prev_angle_.l + (new_vel_.l * (1 / rate_));
-    // angle_.r = prev_angle_.r + (new_vel_.r * (1 / rate_));
-    // sensor_data_.stamp = this->get_clock()->now();
-    // sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
-    // sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
-    // prev_angle_.l = angle_.l;
-    // prev_angle_.r = angle_.r;
-
-    // sensor_data_pub_->publish(sensor_data_);
   }
 
+  /// \brief Checks if the parameters are specified
+  ///
+  /// \param none
+  /// \returns none
   void check_params() {
     if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
        motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
        collision_radius_ == -1.0) {
-        int num = 0;
-        RCLCPP_ERROR(this->get_logger(), "The parameters are not defined");
-        throw num;
+        throw(std::runtime_error("The parameters are not defined"));
     }
   }
 
@@ -280,6 +268,10 @@ private:
     }
   }
 
+  /// \brief Creates markers for the walls and adds them to a marker array
+  ///
+  /// \param none
+  /// \returns none
   void add_walls()
   {
     for (int i = 0; i < 4; i++) {
@@ -303,7 +295,8 @@ private:
     }
   }
 
-  // Declare private variables for the publishers, a timer, services, and a broadcaster
+  // Declare private variables for the publishers, a subscriber, a timer, services, and a
+  // broadcaster
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
@@ -314,11 +307,10 @@ private:
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 
-  // Declare private variables for the node parameters, a timestep, a marker array, and the x, y,
-  // and theta components of the robot's initial location
+  // Declare private variables
   size_t timestep_;
   int rate_;
-  double x0_, y0_, theta0_; // x_init_, y_init_, theta_init_
+  double x0_, y0_, theta0_;
   std::vector<double> obstacles_x_, obstacles_y_;
   double obstacles_r_, walls_x_length_, walls_y_length_;
   visualization_msgs::msg::MarkerArray marker_array_;

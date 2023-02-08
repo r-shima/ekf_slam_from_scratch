@@ -11,7 +11,7 @@ namespace turtlelib
     }
 
     std::istream & operator>>(std::istream & is, Vector2D & v) {
-        char c = is.peek();
+        auto c = is.peek();
 
         if(c == '[') {
             is.get();
@@ -21,7 +21,6 @@ namespace turtlelib
         else {
             is >> v.x >> v.y;
         }
-        is.clear();
         is.ignore(INT_MAX, '\n');
         return is;
     }
@@ -41,7 +40,6 @@ namespace turtlelib
         else {
             is >> t.w >> t.x >> t.y;
         }
-        is.clear();
         is.ignore(INT_MAX, '\n');
         return is;
     }
@@ -67,18 +65,11 @@ namespace turtlelib
     {}
 
     Vector2D Transform2D::operator()(Vector2D v) const {
-        Vector2D vec;
-        vec.x = v.x * cos(theta) - v.y * sin(theta) + tran.x;
-        vec.y = v.x * sin(theta) + v.y * cos(theta) + tran.y;
-        return vec;
+        return {v.x * cos(theta) - v.y * sin(theta) + tran.x, v.x * sin(theta) + v.y * cos(theta) + tran.y};
     }
 
     Transform2D Transform2D::inv() const {
-        Transform2D inv_trans;
-        inv_trans.tran.x = -tran.x * cos(theta) - tran.y * sin(theta);
-        inv_trans.tran.y = -tran.y * cos(theta) + tran.x * sin(theta);
-        inv_trans.theta = -theta;
-        return inv_trans;
+        return {{-tran.x * cos(theta) - tran.y * sin(theta), -tran.y * cos(theta) + tran.x * sin(theta)}, -theta};
     }
 
     Transform2D & Transform2D::operator*=(const Transform2D & rhs) {
@@ -97,11 +88,7 @@ namespace turtlelib
     }
 
     Twist2D Transform2D::operator()(Twist2D t) const {
-        Twist2D twist;
-        twist.w = t.w;
-        twist.x = tran.y * t.w + cos(theta) * t.x - sin(theta) * t.y;
-        twist.y = -tran.x * t.w + sin(theta) * t.x + cos(theta) * t.y;
-        return twist;
+        return {t.w, tran.y * t.w + cos(theta) * t.x - sin(theta) * t.y, -tran.x * t.w + sin(theta) * t.x + cos(theta) * t.y};
     }
 
     std::ostream & operator<<(std::ostream & os, const Transform2D & tf) {
@@ -135,11 +122,8 @@ namespace turtlelib
     }
 
     Vector2D normalize_vector(Vector2D vec) {
-        Vector2D unit_vec;
-        double mag = sqrt(pow(vec.x, 2) + pow(vec.y, 2));
-        unit_vec.x = vec.x / mag;
-        unit_vec.y = vec.y / mag;
-        return unit_vec;
+        const auto mag = sqrt(pow(vec.x, 2) + pow(vec.y, 2));
+        return {vec.x / mag, vec.y / mag};
     }
 
     double normalize_angle(double rad) {
