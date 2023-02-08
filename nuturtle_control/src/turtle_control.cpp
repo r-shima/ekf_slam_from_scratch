@@ -47,8 +47,10 @@ public:
     wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
     track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
     motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
-    motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
-    encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
+    motor_cmd_per_rad_sec_ =
+      get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
+    encoder_ticks_per_rad_ =
+      get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
     collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
 
     wheel_cmd_pub_ = create_publisher<nuturtlebot_msgs::msg::WheelCommands>("wheel_cmd", 10);
@@ -56,7 +58,9 @@ public:
     cmd_vel_sub_ = create_subscription<geometry_msgs::msg::Twist>(
       "cmd_vel", 10, std::bind(&TurtleControl::cmd_vel_callback, this, std::placeholders::_1));
     sensor_data_sub_ = create_subscription<nuturtlebot_msgs::msg::SensorData>(
-      "sensor_data", 10, std::bind(&TurtleControl::sensor_data_callback, this, std::placeholders::_1));
+      "sensor_data", 10, std::bind(
+        &TurtleControl::sensor_data_callback, this,
+        std::placeholders::_1));
 
     time_flag_ = 1.0;
 
@@ -68,21 +72,24 @@ private:
   ///
   /// \param none
   /// \returns none
-  void check_params() {
-    if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
-       motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
-       collision_radius_ == -1.0) {
-        throw(std::runtime_error("The parameters are not defined"));
+  void check_params()
+  {
+    if (wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
+      motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
+      collision_radius_ == -1.0)
+    {
+      throw(std::runtime_error("The parameters are not defined"));
     }
   }
-  
+
   /// \brief Callback function for the subscriber that subscribes to geometry_msgs/msg/Twist.
   /// Uses the twist to calculate the wheel commands. Also limits the range of wheel commands and
   /// publishes them.
   ///
   /// \param msg - Twist object
   /// \returns none
-  void cmd_vel_callback(const geometry_msgs::msg::Twist & msg) {
+  void cmd_vel_callback(const geometry_msgs::msg::Twist & msg)
+  {
     twist_.w = msg.angular.z;
     twist_.x = msg.linear.x;
     twist_.y = msg.linear.y;
@@ -92,17 +99,15 @@ private:
     wheel_commands_.left_velocity = (int32_t)(vel_.l / motor_cmd_per_rad_sec_);
     wheel_commands_.right_velocity = (int32_t)(vel_.r / motor_cmd_per_rad_sec_);
 
-    if(wheel_commands_.left_velocity > motor_cmd_max_) {
-        wheel_commands_.left_velocity = motor_cmd_max_;
+    if (wheel_commands_.left_velocity > motor_cmd_max_) {
+      wheel_commands_.left_velocity = motor_cmd_max_;
+    } else if (wheel_commands_.left_velocity < -motor_cmd_max_) {
+      wheel_commands_.left_velocity = -motor_cmd_max_;
     }
-    else if(wheel_commands_.left_velocity < -motor_cmd_max_) {
-        wheel_commands_.left_velocity = -motor_cmd_max_;
-    }
-    if(wheel_commands_.right_velocity > motor_cmd_max_) {
-        wheel_commands_.right_velocity = motor_cmd_max_;
-    }
-    else if(wheel_commands_.right_velocity < -motor_cmd_max_) {
-        wheel_commands_.right_velocity = -motor_cmd_max_;
+    if (wheel_commands_.right_velocity > motor_cmd_max_) {
+      wheel_commands_.right_velocity = motor_cmd_max_;
+    } else if (wheel_commands_.right_velocity < -motor_cmd_max_) {
+      wheel_commands_.right_velocity = -motor_cmd_max_;
     }
 
     wheel_cmd_pub_->publish(wheel_commands_);
@@ -114,29 +119,33 @@ private:
   ///
   /// \param msg - SensorData object
   /// \returns none
-  void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg) {
+  void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg)
+  {
     if (time_flag_ == 1.0) {
-        joint_state_.header.stamp = get_clock()->now();
-        joint_state_.position = {0.0, 0.0};
-        joint_state_.velocity = {0.0, 0.0};
-        time_flag_ = 0.0;
+      joint_state_.header.stamp = get_clock()->now();
+      joint_state_.position = {0.0, 0.0};
+      joint_state_.velocity = {0.0, 0.0};
+      time_flag_ = 0.0;
     }
 
-    time_diff_ = (msg.stamp.sec + 1e-9 * msg.stamp.nanosec) - (joint_state_.header.stamp.sec + 1e-9 * joint_state_.header.stamp.nanosec);
+    time_diff_ = (msg.stamp.sec + 1e-9 * msg.stamp.nanosec) -
+      (joint_state_.header.stamp.sec + 1e-9 * joint_state_.header.stamp.nanosec);
     auto temp = sensor_msgs::msg::JointState();
     temp.header.stamp = this->get_clock()->now();
     temp.name = {"wheel_left_joint", "wheel_right_joint"};
     temp.position = {msg.left_encoder / encoder_ticks_per_rad_,
-                     msg.right_encoder / encoder_ticks_per_rad_};
-    temp.velocity = {((msg.left_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(0))) / time_diff_,
-                     ((msg.right_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(1))) / time_diff_};
+      msg.right_encoder / encoder_ticks_per_rad_};
+    temp.velocity =
+    {((msg.left_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(0))) / time_diff_,
+      ((msg.right_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(1))) / time_diff_};
 
     joint_state_.header.stamp = msg.stamp;
     joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
-                     msg.right_encoder / encoder_ticks_per_rad_};
-    joint_state_.velocity = {((msg.left_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(0))) / time_diff_,
-                             ((msg.right_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(1))) / time_diff_};
+      msg.right_encoder / encoder_ticks_per_rad_};
+    joint_state_.velocity =
+    {((msg.left_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(0))) / time_diff_,
+      ((msg.right_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(1))) / time_diff_};
 
     joint_states_pub_->publish(temp);
   }
@@ -147,8 +156,9 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_sub_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
-  
-  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_, time_diff_, prev_stamp_, time_flag_;
+
+  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_,
+    collision_radius_, time_diff_, prev_stamp_, time_flag_;
   int motor_cmd_max_;
   turtlelib::Twist2D twist_;
   turtlelib::WheelVelocity vel_;
@@ -163,7 +173,8 @@ int main(int argc, char * argv[])
   rclcpp::init(argc, argv);
   try {
     rclcpp::spin(std::make_shared<TurtleControl>());
-  } catch (int num) {}
+  } catch (int num) {
+  }
   rclcpp::shutdown();
   return 0;
 }

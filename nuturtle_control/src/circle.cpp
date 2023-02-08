@@ -65,8 +65,10 @@ private:
   /// \param request - angular velocity and radius of the arc
   /// \param response - not being used
   /// \returns none
-  void control_callback(const std::shared_ptr<nuturtle_control::srv::Control::Request> request,
-    std::shared_ptr<nuturtle_control::srv::Control::Response>) {
+  void control_callback(
+    const std::shared_ptr<nuturtle_control::srv::Control::Request> request,
+    std::shared_ptr<nuturtle_control::srv::Control::Response>)
+  {
     flag_ = 1;
     twist_.linear.x = request->radius * request->velocity;
     twist_.angular.z = request->velocity;
@@ -77,8 +79,10 @@ private:
   /// \param request - not being used
   /// \param response - not being used
   /// \returns none
-  void reverse_callback(const std::shared_ptr<std_srvs::srv::Empty::Request>,
-    std::shared_ptr<std_srvs::srv::Empty::Response>) {
+  void reverse_callback(
+    const std::shared_ptr<std_srvs::srv::Empty::Request>,
+    std::shared_ptr<std_srvs::srv::Empty::Response>)
+  {
     flag_ = 1;
     twist_.linear.x = -twist_.linear.x;
     twist_.angular.z = -twist_.angular.z;
@@ -89,8 +93,10 @@ private:
   /// \param request - not being used
   /// \param response - not being used
   /// \returns none
-  void stop_callback(const std::shared_ptr<std_srvs::srv::Empty::Request>,
-    std::shared_ptr<std_srvs::srv::Empty::Response>) {
+  void stop_callback(
+    const std::shared_ptr<std_srvs::srv::Empty::Request>,
+    std::shared_ptr<std_srvs::srv::Empty::Response>)
+  {
     flag_ = 0;
     twist_.linear.x = 0.0;
     twist_.angular.z = 0.0;
@@ -101,9 +107,10 @@ private:
   ///
   /// \param none
   /// \returns none
-  void timer_callback() {
-    if(flag_ == 1) {
-        cmd_vel_pub_->publish(twist_);
+  void timer_callback()
+  {
+    if (flag_ == 1) {
+      cmd_vel_pub_->publish(twist_);
     }
   }
 

@@ -55,8 +55,9 @@ public:
 
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     joint_states_sub_ = create_subscription<sensor_msgs::msg::JointState>(
-      "joint_states", 10, std::bind(&Odometry::joint_states_callback, this,
-      std::placeholders::_1));
+      "joint_states", 10, std::bind(
+        &Odometry::joint_states_callback, this,
+        std::placeholders::_1));
     timer_ = create_wall_timer(
       500ms, std::bind(&Odometry::timer_callback, this));
     tf_broadcaster_ =
@@ -81,10 +82,12 @@ private:
   ///
   /// \param none
   /// \returns none
-  void check_params() {
-    if(wheel_radius_ == -1.0 || track_width_ == -1.0 || body_id_ == "" || wheel_left_ == "" ||
-       wheel_right_ == "") {
-        throw(std::runtime_error("The parameters are not defined"));
+  void check_params()
+  {
+    if (wheel_radius_ == -1.0 || track_width_ == -1.0 || body_id_ == "" || wheel_left_ == "" ||
+      wheel_right_ == "")
+    {
+      throw(std::runtime_error("The parameters are not defined"));
     }
   }
 
@@ -93,7 +96,8 @@ private:
   ///
   /// \param msg - JointState object
   /// \returns none
-  void joint_states_callback(const sensor_msgs::msg::JointState & msg) {
+  void joint_states_callback(const sensor_msgs::msg::JointState & msg)
+  {
     angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
     angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
     diff_drive_.forward_kinematics(angle_);
@@ -139,8 +143,10 @@ private:
   /// \param request - x, y, and theta components of the initial pose
   /// \param response - not being used
   /// \returns none
-  void initial_pose_callback(const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
-    request, std::shared_ptr<nuturtle_control::srv::InitialPose::Response>) {
+  void initial_pose_callback(
+    const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
+    request, std::shared_ptr<nuturtle_control::srv::InitialPose::Response>)
+  {
     config_.x = request->x;
     config_.y = request->y;
     config_.theta = request->theta;
@@ -151,7 +157,8 @@ private:
   ///
   /// \param none
   /// \returns none
-  void timer_callback() {
+  void timer_callback()
+  {
     t_.header.stamp = this->get_clock()->now();
     t_.header.frame_id = odom_id_;
     t_.child_frame_id = body_id_;
@@ -209,7 +216,8 @@ int main(int argc, char * argv[])
   rclcpp::init(argc, argv);
   try {
     rclcpp::spin(std::make_shared<Odometry>());
-  } catch (int num) {}
+  } catch (int num) {
+  }
   rclcpp::shutdown();
   return 0;
 }

@@ -86,16 +86,19 @@ public:
     wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
     track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
     motor_cmd_max_ = get_parameter("motor_cmd_max").get_parameter_value().get<int>();
-    motor_cmd_per_rad_sec_ = get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
-    encoder_ticks_per_rad_ = get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
+    motor_cmd_per_rad_sec_ =
+      get_parameter("motor_cmd_per_rad_sec").get_parameter_value().get<double>();
+    encoder_ticks_per_rad_ =
+      get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
     collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
     sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
     wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
-      "red/wheel_cmd", 10, std::bind(&Nusim::wheel_cmd_callback, this,
-      std::placeholders::_1));
+      "red/wheel_cmd", 10, std::bind(
+        &Nusim::wheel_cmd_callback, this,
+        std::placeholders::_1));
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / rate_),
       std::bind(&Nusim::timer_callback, this));
@@ -122,11 +125,11 @@ public:
 
     thickness_ = 0.15;
     position_x_ = {walls_x_length_ / 2 + thickness_ / 2, -walls_x_length_ / 2 - thickness_ / 2,
-                   0.0, 0.0};
+      0.0, 0.0};
     position_y_ = {0.0, 0.0, walls_y_length_ / 2 + thickness_ / 2,
-                   -walls_y_length_ / 2 - thickness_ / 2};
+      -walls_y_length_ / 2 - thickness_ / 2};
     scale_x_ = {thickness_, thickness_, walls_x_length_ + 2.0 * thickness_,
-                walls_x_length_ + 2.0 * thickness_};
+      walls_x_length_ + 2.0 * thickness_};
     scale_y_ = {walls_y_length_, walls_y_length_, thickness_, thickness_};
 
     check_params();
@@ -219,7 +222,8 @@ private:
   ///
   /// \param msg - WheelCommands object
   /// \returns none
-  void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
+  void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg)
+  {
     new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_;
     new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_;
   }
@@ -228,11 +232,13 @@ private:
   ///
   /// \param none
   /// \returns none
-  void check_params() {
-    if(wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
-       motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
-       collision_radius_ == -1.0) {
-        throw(std::runtime_error("The parameters are not defined"));
+  void check_params()
+  {
+    if (wheel_radius_ == -1.0 || track_width_ == -1.0 || motor_cmd_max_ == -1 ||
+      motor_cmd_per_rad_sec_ == -1.0 || encoder_ticks_per_rad_ == -1.0 ||
+      collision_radius_ == -1.0)
+    {
+      throw(std::runtime_error("The parameters are not defined"));
     }
   }
 
@@ -240,7 +246,8 @@ private:
   ///
   /// \param none
   /// \returns none
-  void add_obstacles() {
+  void add_obstacles()
+  {
     const auto marker_array_size = obstacles_x_.size();
 
     if (obstacles_x_.size() != obstacles_y_.size()) {
@@ -275,23 +282,23 @@ private:
   void add_walls()
   {
     for (int i = 0; i < 4; i++) {
-        visualization_msgs::msg::Marker wall_marker;
-        wall_marker.header.frame_id = "nusim/world";
-        wall_marker.header.stamp = this->get_clock()->now();
-        wall_marker.id = i;
-        wall_marker.type = visualization_msgs::msg::Marker::CUBE;
-        wall_marker.action = visualization_msgs::msg::Marker::ADD;
-        wall_marker.pose.position.x = position_x_.at(i);
-        wall_marker.pose.position.y = position_y_.at(i);
-        wall_marker.scale.x = scale_x_.at(i);
-        wall_marker.scale.y = scale_y_.at(i);
-        wall_marker.color.r = 0.3;
-        wall_marker.color.g = 0.5;
-        wall_marker.color.b = 1.0;
-        wall_marker.color.a = 1.0;
-        wall_marker.pose.position.z = 0.125;
-        wall_marker.scale.z = 0.25;
-        wall_array_.markers.push_back(wall_marker);
+      visualization_msgs::msg::Marker wall_marker;
+      wall_marker.header.frame_id = "nusim/world";
+      wall_marker.header.stamp = this->get_clock()->now();
+      wall_marker.id = i;
+      wall_marker.type = visualization_msgs::msg::Marker::CUBE;
+      wall_marker.action = visualization_msgs::msg::Marker::ADD;
+      wall_marker.pose.position.x = position_x_.at(i);
+      wall_marker.pose.position.y = position_y_.at(i);
+      wall_marker.scale.x = scale_x_.at(i);
+      wall_marker.scale.y = scale_y_.at(i);
+      wall_marker.color.r = 0.3;
+      wall_marker.color.g = 0.5;
+      wall_marker.color.b = 1.0;
+      wall_marker.color.a = 1.0;
+      wall_marker.pose.position.z = 0.125;
+      wall_marker.scale.z = 0.25;
+      wall_array_.markers.push_back(wall_marker);
     }
   }
 
@@ -319,7 +326,8 @@ private:
   double thickness_;
   turtlelib::WheelAngle angle_, prev_angle_, temp_angle_;
   turtlelib::WheelVelocity new_vel_;
-  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_;
+  double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_,
+    collision_radius_;
   int motor_cmd_max_;
   nuturtlebot_msgs::msg::SensorData sensor_data_;
   turtlelib::DiffDrive diff_drive_;
