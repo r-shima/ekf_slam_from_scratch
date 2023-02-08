@@ -40,6 +40,8 @@ public:
     timer_ = create_wall_timer(
       500ms, std::bind(&TurtleControl::timer_callback, this));
 
+    time_flag_ = 1.0;
+
     // check_params();
   }
 
@@ -81,8 +83,8 @@ private:
   }
   
   void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg) {
-    joint_state_.header.stamp = msg.stamp;
-    joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
+    // joint_state_.header.stamp = msg.stamp;
+    // joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
 
     // double dt;
     // if(prev_stamp_ == -1.0) {
@@ -98,27 +100,68 @@ private:
     // }
     // prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
 
-    if(turtlelib::almost_equal(msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_, 0.0)) {
-        time_diff_ = time_diff_;
-    }
-    else {
-        time_diff_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
-    }
-    prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
+    // if(turtlelib::almost_equal(msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_, 0.0)) {
+    //     time_diff_ = time_diff_;
+    // }
+    // else {
+    //     time_diff_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_stamp_;
+    // }
+    // prev_stamp_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec;
 
-    if (time_flag_ == -1.0) {
+    // if (time_flag_ == -1.0) {
+    //     joint_state_.position = {0.0, 0.0};
+    //     joint_state_.velocity = {0.0, 0.0};
+    //     time_flag_ = 0.0;
+    // }
+    // else {
+    //     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
+    //                              msg.right_encoder / encoder_ticks_per_rad_};
+    //     joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
+    //                              joint_state_.position[1] / time_diff_};
+    // }
+
+    // joint_states_pub_->publish(joint_state_);
+
+    // if (time_flag_ == 1.0) {
+    //     prev_time_.stamp = get_clock()->now();
+    //     time_flag_++;
+    // }
+    // else {
+    //     time_diff_ = msg.stamp.sec + 1e-9 * msg.stamp.nanosec - prev_time_.stamp.sec + 1e-9 * prev_time_.stamp.nanosec;
+    //     joint_state_.header.stamp = msg.stamp;
+    //     joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
+    //     joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
+    //                              msg.right_encoder / encoder_ticks_per_rad_};
+    //     joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
+    //                              joint_state_.position[1] / time_diff_};
+    //     joint_states_pub_->publish(joint_state_);
+    //     prev_time_.stamp = msg.stamp;
+    // }
+
+    if (time_flag_ == 1.0) {
+        joint_state_.header.stamp = get_clock()->now();
         joint_state_.position = {0.0, 0.0};
         joint_state_.velocity = {0.0, 0.0};
         time_flag_ = 0.0;
     }
-    else {
-        joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
-                                 msg.right_encoder / encoder_ticks_per_rad_};
-        joint_state_.velocity = {joint_state_.position[0] / time_diff_, 
-                                 joint_state_.position[1] / time_diff_};
-    }
 
-    joint_states_pub_->publish(joint_state_);
+    time_diff_ = (msg.stamp.sec + 1e-9 * msg.stamp.nanosec) - (joint_state_.header.stamp.sec + 1e-9 * joint_state_.header.stamp.nanosec);
+    auto temp = sensor_msgs::msg::JointState();
+    temp.header.stamp = this->get_clock()->now();
+    temp.name = {"wheel_left_joint", "wheel_right_joint"};
+    temp.position = {msg.left_encoder / encoder_ticks_per_rad_,
+                     msg.right_encoder / encoder_ticks_per_rad_};
+    temp.velocity = {((msg.left_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(0))) / time_diff_,
+                     ((msg.right_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(1))) / time_diff_};
+
+    joint_state_.header.stamp = msg.stamp;
+    joint_state_.name = {"wheel_left_joint", "wheel_right_joint"};
+    joint_state_.position = {msg.left_encoder / encoder_ticks_per_rad_,
+                     msg.right_encoder / encoder_ticks_per_rad_};
+    joint_state_.velocity = {((msg.left_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(0))) / time_diff_,
+                             ((msg.right_encoder / encoder_ticks_per_rad_) - (joint_state_.position.at(1))) / time_diff_};
+
+    joint_states_pub_->publish(temp);
   }
   
   void timer_callback() {
@@ -139,6 +182,7 @@ private:
   turtlelib::WheelVelocity vel_;
   nuturtlebot_msgs::msg::WheelCommands wheel_commands_;
   sensor_msgs::msg::JointState joint_state_;
+  std_msgs::msg::Header prev_time_;
 };
 
 /// \brief The main function

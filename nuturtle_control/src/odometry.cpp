@@ -49,6 +49,8 @@ public:
         std::placeholders::_1,
         std::placeholders::_2));
 
+    prev_angle_.position = {0.0, 0.0};
+
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
     // check_params();
@@ -65,11 +67,17 @@ private:
   }
 
   void joint_states_callback(const sensor_msgs::msg::JointState & msg) {
-    if(msg.position.size() >= 2) {
-        angle_.l = msg.position.at(0);
-        angle_.r = msg.position.at(1);
-        diff_drive_.forward_kinematics(angle_);
-    }
+    // if(msg.position.size() >= 2) {
+    //     angle_.l = msg.position.at(0) - prev_angle_.l;
+    //     angle_.r = msg.position.at(1) - prev_angle_.r;
+    //     diff_drive_.forward_kinematics(angle_);
+    //     prev_angle_.l = msg.position.at(0);
+    //     prev_angle_.r = msg.position.at(1);
+    // }
+
+    angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
+    angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
+    diff_drive_.forward_kinematics(angle_);
 
     t_.header.stamp = this->get_clock()->now();
     t_.header.frame_id = odom_id_;
@@ -103,6 +111,8 @@ private:
     odom_.pose.pose.orientation.w = q.w();
 
     odom_pub_->publish(odom_);
+
+    prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
   }
 
   void initial_pose_callback(const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
@@ -162,6 +172,7 @@ private:
   geometry_msgs::msg::TransformStamped t_;
   nav_msgs::msg::Odometry odom_;
   turtlelib::Config config_;
+  sensor_msgs::msg::JointState prev_angle_;
 };
 
 /// \brief The main function

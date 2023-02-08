@@ -103,6 +103,7 @@ public:
     x_ = x0_;
     y_ = y0_;
     theta_ = theta0_;
+    dt_ = 1.0 / rate_;
 
     thickness_ = 0.15;
     position_x_ = {walls_x_length_ / 2 + thickness_ / 2, -walls_x_length_ / 2 - thickness_ / 2,
@@ -149,6 +150,25 @@ private:
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
     // sensor_data_pub_->publish(sensor_data_);
+
+    temp_angle_.l = new_vel_.l * dt_;
+    temp_angle_.r = new_vel_.r * dt_;
+    RCLCPP_INFO_STREAM(get_logger(), "Temp angle values: " << temp_angle_.l << ", " << temp_angle_.r);
+    diff_drive_.forward_kinematics(temp_angle_);
+    x_ = diff_drive_.configuration().x;
+    y_ = diff_drive_.configuration().y;
+    theta_ = diff_drive_.configuration().theta;
+
+    angle_.l = prev_angle_.l + (new_vel_.l * dt_);
+    angle_.r = prev_angle_.r + (new_vel_.r * dt_);
+    sensor_data_.stamp = this->get_clock()->now();
+    sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
+    sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
+    RCLCPP_INFO_STREAM(get_logger(), "Encoder values: " << sensor_data_.left_encoder << ", " << sensor_data_.right_encoder);
+    prev_angle_.l = angle_.l;
+    prev_angle_.r = angle_.r;
+
+    sensor_data_pub_->publish(sensor_data_);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -182,19 +202,38 @@ private:
   }
 
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg) {
-    sensor_data_.stamp = this->get_clock()->now();
-    sensor_data_.left_encoder = msg.left_velocity;
-    sensor_data_.right_encoder = msg.right_velocity;
-    angle_.l = msg.left_velocity / encoder_ticks_per_rad_;
-    angle_.r = msg.right_velocity / encoder_ticks_per_rad_;
-    diff_drive_.forward_kinematics(angle_);
-    x_ = diff_drive_.configuration().x;
-    y_ = diff_drive_.configuration().y;
-    theta_ = diff_drive_.configuration().theta;
-    // x0_ = x_;
-    // y0_ = y_;
-    // theta0_ = theta_;
-    sensor_data_pub_->publish(sensor_data_);
+    // sensor_data_.stamp = this->get_clock()->now();
+    // sensor_data_.left_encoder = msg.left_velocity;
+    // sensor_data_.right_encoder = msg.right_velocity;
+    // angle_.l = msg.left_velocity / encoder_ticks_per_rad_;
+    // angle_.r = msg.right_velocity / encoder_ticks_per_rad_;
+    // diff_drive_.forward_kinematics(angle_);
+    // x_ = diff_drive_.configuration().x;
+    // y_ = diff_drive_.configuration().y;
+    // theta_ = diff_drive_.configuration().theta;
+    // // x0_ = x_;
+    // // y0_ = y_;
+    // // theta0_ = theta_;
+    // sensor_data_pub_->publish(sensor_data_);
+
+    new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_;
+    new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_;
+    // temp_angle_.l = new_vel_.l * (1 / rate_);
+    // temp_angle_.r = new_vel_.r * (1 / rate_);
+    // diff_drive_.forward_kinematics(temp_angle_);
+    // x_ = diff_drive_.configuration().x;
+    // y_ = diff_drive_.configuration().y;
+    // theta_ = diff_drive_.configuration().theta;
+
+    // angle_.l = prev_angle_.l + (new_vel_.l * (1 / rate_));
+    // angle_.r = prev_angle_.r + (new_vel_.r * (1 / rate_));
+    // sensor_data_.stamp = this->get_clock()->now();
+    // sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
+    // sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
+    // prev_angle_.l = angle_.l;
+    // prev_angle_.r = angle_.r;
+
+    // sensor_data_pub_->publish(sensor_data_);
   }
 
   void check_params() {
@@ -284,12 +323,13 @@ private:
   std::vector<double> position_x_, position_y_, scale_x_, scale_y_;
   visualization_msgs::msg::MarkerArray wall_array_;
   double thickness_;
-  turtlelib::WheelAngle angle_;
+  turtlelib::WheelAngle angle_, prev_angle_, temp_angle_;
+  turtlelib::WheelVelocity new_vel_;
   double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_, collision_radius_;
   int motor_cmd_max_;
   nuturtlebot_msgs::msg::SensorData sensor_data_;
   turtlelib::DiffDrive diff_drive_;
-  double x_, y_, theta_;
+  double x_, y_, theta_, dt_;
 };
 
 /// \brief The main function
