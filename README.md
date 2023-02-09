@@ -9,7 +9,7 @@ This repository consists of several ROS packages
 # Custom Library
 - turtlelib - A library for performing 2D rigid body transformations and other turtlebot-related math
 # Physical Testing
-In the videos shown below, the turtlebot moves in a circle (clockwise and counterclockwise) and stops at its initial configuration.
+In the videos shown below, the turtlebot moves in a circle (clockwise and counterclockwise) and stops at its initial configuration in RViz and the real world.
 
 [Alt-Text](https://user-images.githubusercontent.com/113070827/217684866-9861df1e-4646-47e0-be22-85ffd615b72a.mp4)
 
