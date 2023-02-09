@@ -171,10 +171,7 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  try {
-    rclcpp::spin(std::make_shared<TurtleControl>());
-  } catch (int num) {
-  }
+  rclcpp::spin(std::make_shared<TurtleControl>());
   rclcpp::shutdown();
   return 0;
 }

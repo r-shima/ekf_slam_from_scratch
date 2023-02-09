@@ -58,8 +58,6 @@ public:
       "joint_states", 10, std::bind(
         &Odometry::joint_states_callback, this,
         std::placeholders::_1));
-    timer_ = create_wall_timer(
-      500ms, std::bind(&Odometry::timer_callback, this));
     tf_broadcaster_ =
       std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     initial_pose_ = create_service<nuturtle_control::srv::InitialPose>(
@@ -153,50 +151,9 @@ private:
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_, config_};
   }
 
-  /// \brief Callback function for the timer. Broadcasts the transform and publishes odometry.
-  ///
-  /// \param none
-  /// \returns none
-  void timer_callback()
-  {
-    // t_.header.stamp = this->get_clock()->now();
-    // t_.header.frame_id = odom_id_;
-    // t_.child_frame_id = body_id_;
-    // t_.transform.translation.x = diff_drive_.configuration().x;
-    // t_.transform.translation.y = diff_drive_.configuration().y;
-    // t_.transform.translation.z = 0.0;
-
-    // tf2::Quaternion q;
-    // q.setRPY(0, 0, diff_drive_.configuration().theta);
-    // t_.transform.rotation.x = q.x();
-    // t_.transform.rotation.y = q.y();
-    // t_.transform.rotation.z = q.z();
-    // t_.transform.rotation.w = q.w();
-
-    // tf_broadcaster_->sendTransform(t_);
-
-    // turtlelib::Twist2D twist = diff_drive_.twist_to_angles(angle_);
-    // odom_.header.stamp = this->get_clock()->now();
-    // odom_.header.frame_id = odom_id_;
-    // odom_.child_frame_id = body_id_;
-    // odom_.pose.pose.position.x = diff_drive_.configuration().x;
-    // odom_.pose.pose.position.y = diff_drive_.configuration().y;
-    // odom_.pose.pose.position.z = 0.0;
-    // odom_.twist.twist.linear.x = twist.x;
-    // odom_.twist.twist.angular.z = twist.w;
-
-    // odom_.pose.pose.orientation.x = q.x();
-    // odom_.pose.pose.orientation.y = q.y();
-    // odom_.pose.pose.orientation.z = q.z();
-    // odom_.pose.pose.orientation.w = q.w();
-
-    // odom_pub_->publish(odom_);
-  }
-
   // Declare private variables
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
-  rclcpp::TimerBase::SharedPtr timer_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
 
@@ -214,10 +171,7 @@ private:
 int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
-  try {
-    rclcpp::spin(std::make_shared<Odometry>());
-  } catch (int num) {
-  }
+  rclcpp::spin(std::make_shared<Odometry>());
   rclcpp::shutdown();
   return 0;
 }
