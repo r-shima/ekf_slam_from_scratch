@@ -1,7 +1,7 @@
 # Nusim
-This package provides a simulated environment with obstacles in RViz for a turtlebot.
+This package provides a simulated environment with obstacles and walls in RViz for a turtlebot.
 ## Launch File
-* `ros2 launch nusim nusim.launch.xml` to see the red turtlebot and three cylindrical obstacles in RViz.
+* `ros2 launch nusim nusim.launch.xml` to see the red turtlebot, three cylindrical obstacles, and walls in RViz.
 ## Parameters
 The following parameters in `config/basic_world.yaml` can be used to change the simulator settings:
 * `rate` - A frequency used to run the main loop
@@ -12,6 +12,9 @@ The following parameters in `config/basic_world.yaml` can be used to change the 
     * `x` - A list of the obstacles' x coordinates
     * `y` - A list of the obstacles' y coordinates
     * `r` - The radius of the obstacles
+* `walls`
+    * `x_length` - the length of the arena in the world x direction
+    * `y_length` - the length of the arena in the world y direction
 
 
 ![](images/nusim1.png)
