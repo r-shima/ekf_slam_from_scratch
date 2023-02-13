@@ -48,6 +48,8 @@
 #include "turtlelib/diff_drive.hpp"
 #include "nuturtlebot_msgs/msg/wheel_commands.hpp"
 #include "nuturtlebot_msgs/msg/sensor_data.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 /// \brief Creates a simulation environment for the turtlebot
 class Nusim : public rclcpp::Node
@@ -95,6 +97,7 @@ public:
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
     sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
+    path_pub_ = create_publisher<nav_msgs::msg::Path>("red/path", 10);
     wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
       "red/wheel_cmd", 10, std::bind(
         &Nusim::wheel_cmd_callback, this,
@@ -166,6 +169,7 @@ private:
     t.transform.rotation.w = q.w();
 
     tf_broadcaster_->sendTransform(t);
+
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
 
@@ -185,6 +189,17 @@ private:
     prev_angle_.r = angle_.r;
 
     sensor_data_pub_->publish(sensor_data_);
+
+    pose_.header.stamp = get_clock()->now();
+    pose_.header.frame_id = "nusim/world";
+    pose_.pose.position.x = x_;
+    pose_.pose.position.y = y_;
+    pose_.pose.position.z = 0.0;
+    
+    path_.header.stamp = get_clock()->now();
+    path_.header.frame_id = "nusim/world";
+    path_.poses.push_back(pose_);
+    path_pub_->publish(path_);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -292,9 +307,9 @@ private:
       wall_marker.pose.position.y = position_y_.at(i);
       wall_marker.scale.x = scale_x_.at(i);
       wall_marker.scale.y = scale_y_.at(i);
-      wall_marker.color.r = 0.3;
-      wall_marker.color.g = 0.5;
-      wall_marker.color.b = 1.0;
+      wall_marker.color.r = 1.0;
+      wall_marker.color.g = 0.0;
+      wall_marker.color.b = 0.0;
       wall_marker.color.a = 1.0;
       wall_marker.pose.position.z = 0.125;
       wall_marker.scale.z = 0.25;
@@ -308,6 +323,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
@@ -332,6 +348,8 @@ private:
   nuturtlebot_msgs::msg::SensorData sensor_data_;
   turtlelib::DiffDrive diff_drive_;
   double x_, y_, theta_, dt_;
+  nav_msgs::msg::Path path_;
+  geometry_msgs::msg::PoseStamped pose_;
 };
 
 /// \brief The main function

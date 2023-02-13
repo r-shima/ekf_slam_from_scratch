@@ -28,6 +28,8 @@
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "turtlelib/diff_drive.hpp"
 #include "nuturtle_control/srv/initial_pose.hpp"
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 
 using namespace std::chrono_literals;
 
@@ -54,6 +56,7 @@ public:
     wheel_right_ = get_parameter("wheel_right").get_parameter_value().get<std::string>();
 
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
+    path_pub_ = create_publisher<nav_msgs::msg::Path>("blue/path", 10);
     joint_states_sub_ = create_subscription<sensor_msgs::msg::JointState>(
       "joint_states", 10, std::bind(
         &Odometry::joint_states_callback, this,
@@ -134,6 +137,17 @@ private:
     odom_pub_->publish(odom_);
 
     prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
+
+    pose_.header.stamp = get_clock()->now();
+    pose_.header.frame_id = "nusim/world";
+    pose_.pose.position.x = diff_drive_.configuration().x;
+    pose_.pose.position.y = diff_drive_.configuration().y;
+    pose_.pose.position.z = 0.0;
+    
+    path_.header.stamp = get_clock()->now();
+    path_.header.frame_id = "nusim/world";
+    path_.poses.push_back(pose_);
+    path_pub_->publish(path_);
   }
 
   /// \brief Callback function for the initial_pose. Resets the location of the odometry.
@@ -153,6 +167,7 @@ private:
 
   // Declare private variables
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
+  rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
   rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
@@ -165,6 +180,8 @@ private:
   nav_msgs::msg::Odometry odom_;
   turtlelib::Config config_;
   sensor_msgs::msg::JointState prev_angle_;
+  nav_msgs::msg::Path path_;
+  geometry_msgs::msg::PoseStamped pose_;
 };
 
 /// \brief The main function
