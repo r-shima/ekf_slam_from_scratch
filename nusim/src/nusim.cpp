@@ -36,6 +36,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "std_msgs/msg/u_int64.hpp"
@@ -50,6 +51,16 @@
 #include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+
+std::mt19937 & get_random()
+{
+     // static variables inside a function are created once and persist for the remainder of the program
+     static std::random_device rd{}; 
+     static std::mt19937 mt{rd()};
+     // we return a reference to the pseudo-random number generator object. This is always the
+     // same object every time get_random is called
+     return mt;
+}
 
 /// \brief Creates a simulation environment for the turtlebot
 class Nusim : public rclcpp::Node
@@ -76,6 +87,8 @@ public:
     declare_parameter("motor_cmd_per_rad_sec", -1.0);
     declare_parameter("encoder_ticks_per_rad", -1.0);
     declare_parameter("collision_radius", -1.0);
+    declare_parameter("input_noise", 0.01);
+    declare_parameter("slip_fraction", 0.01);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -93,11 +106,14 @@ public:
     encoder_ticks_per_rad_ =
       get_parameter("encoder_ticks_per_rad").get_parameter_value().get<double>();
     collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
+    input_noise_ = get_parameter("input_noise").get_parameter_value().get<double>();
+    slip_fraction_ = get_parameter("slip_fraction").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
     sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
     path_pub_ = create_publisher<nav_msgs::msg::Path>("red/path", 10);
+    fake_sensor_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("fake_sensor", 10);
     wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
       "red/wheel_cmd", 10, std::bind(
         &Nusim::wheel_cmd_callback, this,
@@ -134,6 +150,11 @@ public:
     scale_x_ = {thickness_, thickness_, walls_x_length_ + 2.0 * thickness_,
       walls_x_length_ + 2.0 * thickness_};
     scale_y_ = {walls_y_length_, walls_y_length_, thickness_, thickness_};
+
+    left_noise = 0.0;
+    right_noise = 0.0;
+    n_dist = std::normal_distribution<>{0.0, input_noise_};
+    u_dist = std::uniform_real_distribution<>{-slip_fraction_, slip_fraction_};
 
     check_params();
     add_obstacles();
@@ -173,8 +194,9 @@ private:
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
 
-    temp_angle_.l = new_vel_.l * dt_;
-    temp_angle_.r = new_vel_.r * dt_;
+    RCLCPP_INFO_STREAM(get_logger(), "Uniform dist: " << u_dist(get_random()));
+    temp_angle_.l = new_vel_.l * dt_ * (1 + u_dist(get_random()));
+    temp_angle_.r = new_vel_.r * dt_ * (1 + u_dist(get_random()));
     diff_drive_.forward_kinematics(temp_angle_);
     x_ = diff_drive_.configuration().x;
     y_ = diff_drive_.configuration().y;
@@ -182,7 +204,7 @@ private:
 
     angle_.l = prev_angle_.l + (new_vel_.l * dt_);
     angle_.r = prev_angle_.r + (new_vel_.r * dt_);
-    sensor_data_.stamp = this->get_clock()->now();
+    sensor_data_.stamp = get_clock()->now();
     sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
     sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
     prev_angle_.l = angle_.l;
@@ -239,8 +261,15 @@ private:
   /// \returns none
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg)
   {
-    new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_;
-    new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_;
+    if (msg.left_velocity != 0) {
+        left_noise = n_dist(get_random());
+    }
+    if (msg.right_velocity != 0) {
+        right_noise = n_dist(get_random());
+    }
+
+    new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_ + left_noise;
+    new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_ + right_noise;
   }
 
   /// \brief Checks if the parameters are specified
@@ -324,6 +353,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr wall_marker_pub_;
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_pub_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
@@ -343,13 +373,17 @@ private:
   turtlelib::WheelAngle angle_, prev_angle_, temp_angle_;
   turtlelib::WheelVelocity new_vel_;
   double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_,
-    collision_radius_;
+    collision_radius_, input_noise_, slip_fraction_;
   int motor_cmd_max_;
   nuturtlebot_msgs::msg::SensorData sensor_data_;
   turtlelib::DiffDrive diff_drive_;
   double x_, y_, theta_, dt_;
   nav_msgs::msg::Path path_;
   geometry_msgs::msg::PoseStamped pose_;
+  double left_noise;
+  double right_noise;
+  std::normal_distribution<> n_dist{0.0, 0.0};
+  std::uniform_real_distribution<> u_dist{0.0, 0.0};
 };
 
 /// \brief The main function

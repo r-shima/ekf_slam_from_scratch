@@ -139,13 +139,13 @@ private:
     prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
 
     pose_.header.stamp = get_clock()->now();
-    pose_.header.frame_id = "nusim/world";
+    pose_.header.frame_id = odom_id_;
     pose_.pose.position.x = diff_drive_.configuration().x;
     pose_.pose.position.y = diff_drive_.configuration().y;
     pose_.pose.position.z = 0.0;
     
     path_.header.stamp = get_clock()->now();
-    path_.header.frame_id = "nusim/world";
+    path_.header.frame_id = odom_id_;
     path_.poses.push_back(pose_);
     path_pub_->publish(path_);
   }
