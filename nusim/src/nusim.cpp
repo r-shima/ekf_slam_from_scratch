@@ -89,6 +89,8 @@ public:
     declare_parameter("collision_radius", -1.0);
     declare_parameter("input_noise", 0.01);
     declare_parameter("slip_fraction", 0.01);
+    declare_parameter("basic_sensor_variance", 0.01);
+    declare_parameter("max_range", 10.0);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -108,12 +110,14 @@ public:
     collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
     input_noise_ = get_parameter("input_noise").get_parameter_value().get<double>();
     slip_fraction_ = get_parameter("slip_fraction").get_parameter_value().get<double>();
+    basic_sensor_variance_ = get_parameter("basic_sensor_variance").get_parameter_value().get<double>();
+    max_range_ = get_parameter("max_range").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
     sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
     path_pub_ = create_publisher<nav_msgs::msg::Path>("red/path", 10);
-    fake_sensor_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("fake_sensor", 10);
+    fake_sensor_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/fake_sensor", 10);
     wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
       "red/wheel_cmd", 10, std::bind(
         &Nusim::wheel_cmd_callback, this,
@@ -121,6 +125,9 @@ public:
     timer_ = create_wall_timer(
       std::chrono::milliseconds(1000 / rate_),
       std::bind(&Nusim::timer_callback, this));
+    timer2_ = create_wall_timer(
+      std::chrono::milliseconds(200),
+      std::bind(&Nusim::timer2_callback, this));
     reset_ = create_service<std_srvs::srv::Empty>(
       "~/reset",
       std::bind(
@@ -151,10 +158,11 @@ public:
       walls_x_length_ + 2.0 * thickness_};
     scale_y_ = {walls_y_length_, walls_y_length_, thickness_, thickness_};
 
-    left_noise = 0.0;
-    right_noise = 0.0;
-    n_dist = std::normal_distribution<>{0.0, input_noise_};
-    u_dist = std::uniform_real_distribution<>{-slip_fraction_, slip_fraction_};
+    left_noise_ = 0.0;
+    right_noise_ = 0.0;
+    n_dist_ = std::normal_distribution<>{0.0, input_noise_};
+    u_dist_ = std::uniform_real_distribution<>{-slip_fraction_, slip_fraction_};
+    sensor_n_dist_ = std::normal_distribution<>{0.0, basic_sensor_variance_};
 
     check_params();
     add_obstacles();
@@ -194,9 +202,8 @@ private:
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
 
-    RCLCPP_INFO_STREAM(get_logger(), "Uniform dist: " << u_dist(get_random()));
-    temp_angle_.l = new_vel_.l * dt_ * (1 + u_dist(get_random()));
-    temp_angle_.r = new_vel_.r * dt_ * (1 + u_dist(get_random()));
+    temp_angle_.l = new_vel_.l * dt_ * (1.0 + u_dist_(get_random()));
+    temp_angle_.r = new_vel_.r * dt_ * (1.0 + u_dist_(get_random()));
     diff_drive_.forward_kinematics(temp_angle_);
     x_ = diff_drive_.configuration().x;
     y_ = diff_drive_.configuration().y;
@@ -222,6 +229,48 @@ private:
     path_.header.frame_id = "nusim/world";
     path_.poses.push_back(pose_);
     path_pub_->publish(path_);
+  }
+
+  void timer2_callback() {
+    turtlelib::Vector2D vec = {diff_drive_.configuration().x, diff_drive_.configuration().y};
+    double theta = diff_drive_.configuration().theta;
+    turtlelib::Transform2D T_wr = turtlelib::Transform2D(vec, theta);
+    turtlelib::Transform2D T_rw = T_wr.inv();
+    visualization_msgs::msg::MarkerArray sensor_array;
+
+    for (size_t i = 0; i < obstacles_x_.size(); i++) {
+      turtlelib::Vector2D obs_vec{obstacles_x_.at(i), obstacles_y_.at(i)};
+      turtlelib::Vector2D v_ro = T_rw(obs_vec);
+      turtlelib::Vector2D noise_vec{v_ro.x + sensor_n_dist_(get_random()), v_ro.y + sensor_n_dist_(get_random())};
+      turtlelib::Vector2D obs_w_noise = T_wr(noise_vec);
+      double distance = std::sqrt(pow(v_ro.x, 2) + pow(v_ro.y, 2));
+
+      visualization_msgs::msg::Marker sensor_marker;
+      sensor_marker.header.frame_id = "red/base_footprint";
+      sensor_marker.header.stamp = get_clock()->now();
+      sensor_marker.id = i;
+      sensor_marker.type = visualization_msgs::msg::Marker::CYLINDER;
+
+      if (distance > max_range_) {
+        sensor_marker.action = visualization_msgs::msg::Marker::DELETE;
+      }
+      else {
+        sensor_marker.action = visualization_msgs::msg::Marker::ADD;
+      }
+
+      sensor_marker.pose.position.x = obs_w_noise.x;
+      sensor_marker.pose.position.y = obs_w_noise.y;
+      sensor_marker.pose.position.z = 0.125;
+      sensor_marker.scale.x = 2.0 * obstacles_r_;
+      sensor_marker.scale.y = 2.0 * obstacles_r_;
+      sensor_marker.scale.z = 0.25;
+      sensor_marker.color.r = 1.0;
+      sensor_marker.color.g = 1.0;
+      sensor_marker.color.b = 0.0;
+      sensor_marker.color.a = 1.0;
+      sensor_array.markers.push_back(sensor_marker);
+    }
+    fake_sensor_pub_->publish(sensor_array);
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -262,14 +311,14 @@ private:
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg)
   {
     if (msg.left_velocity != 0) {
-        left_noise = n_dist(get_random());
+        left_noise_ = n_dist_(get_random());
     }
     if (msg.right_velocity != 0) {
-        right_noise = n_dist(get_random());
+        right_noise_ = n_dist_(get_random());
     }
 
-    new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_ + left_noise;
-    new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_ + right_noise;
+    new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_ + left_noise_;
+    new_vel_.r = static_cast<double>(msg.right_velocity) * motor_cmd_per_rad_sec_ + right_noise_;
   }
 
   /// \brief Checks if the parameters are specified
@@ -301,7 +350,7 @@ private:
     for (size_t i = 0; i < marker_array_size; i++) {
       visualization_msgs::msg::Marker marker;
       marker.header.frame_id = "nusim/world";
-      marker.header.stamp = this->get_clock()->now();
+      marker.header.stamp = get_clock()->now();
       marker.id = i;
       marker.type = visualization_msgs::msg::Marker::CYLINDER;
       marker.action = visualization_msgs::msg::Marker::ADD;
@@ -328,7 +377,7 @@ private:
     for (int i = 0; i < 4; i++) {
       visualization_msgs::msg::Marker wall_marker;
       wall_marker.header.frame_id = "nusim/world";
-      wall_marker.header.stamp = this->get_clock()->now();
+      wall_marker.header.stamp = get_clock()->now();
       wall_marker.id = i;
       wall_marker.type = visualization_msgs::msg::Marker::CUBE;
       wall_marker.action = visualization_msgs::msg::Marker::ADD;
@@ -356,6 +405,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_pub_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr timer2_;
   rclcpp::Service<std_srvs::srv::Empty>::SharedPtr reset_;
   rclcpp::Service<nusim::srv::Teleport>::SharedPtr teleport_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
@@ -373,17 +423,18 @@ private:
   turtlelib::WheelAngle angle_, prev_angle_, temp_angle_;
   turtlelib::WheelVelocity new_vel_;
   double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_,
-    collision_radius_, input_noise_, slip_fraction_;
+    collision_radius_, input_noise_, slip_fraction_, basic_sensor_variance_, max_range_;
   int motor_cmd_max_;
   nuturtlebot_msgs::msg::SensorData sensor_data_;
   turtlelib::DiffDrive diff_drive_;
   double x_, y_, theta_, dt_;
   nav_msgs::msg::Path path_;
   geometry_msgs::msg::PoseStamped pose_;
-  double left_noise;
-  double right_noise;
-  std::normal_distribution<> n_dist{0.0, 0.0};
-  std::uniform_real_distribution<> u_dist{0.0, 0.0};
+  double left_noise_;
+  double right_noise_;
+  std::normal_distribution<> n_dist_{0.0, 0.0};
+  std::uniform_real_distribution<> u_dist_{0.0, 0.0};
+  std::normal_distribution<> sensor_n_dist_{0.0, 0.0};
 };
 
 /// \brief The main function
