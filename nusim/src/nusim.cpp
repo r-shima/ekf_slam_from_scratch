@@ -184,6 +184,7 @@ private:
 
     geometry_msgs::msg::TransformStamped t;
     t.header.stamp = get_clock()->now();
+    t.header.stamp.nanosec += 50000000;
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
     t.transform.translation.x = x_;
@@ -219,58 +220,26 @@ private:
 
     sensor_data_pub_->publish(sensor_data_);
 
-    pose_.header.stamp = get_clock()->now();
-    pose_.header.frame_id = "nusim/world";
-    pose_.pose.position.x = x_;
-    pose_.pose.position.y = y_;
-    pose_.pose.position.z = 0.0;
+    if (timestep_ % 100 == 1)
+    {
+      pose_.header.stamp = get_clock()->now();
+      pose_.header.frame_id = "nusim/world";
+      pose_.pose.position.x = x_;
+      pose_.pose.position.y = y_;
+      pose_.pose.position.z = 0.0;
     
-    path_.header.stamp = get_clock()->now();
-    path_.header.frame_id = "nusim/world";
-    path_.poses.push_back(pose_);
+      path_.header.stamp = get_clock()->now();
+      path_.header.frame_id = "nusim/world";
+      path_.poses.push_back(pose_);
+    }
+
     path_pub_->publish(path_);
+
+    check_collision();
   }
 
   void timer2_callback() {
-    turtlelib::Vector2D vec = {diff_drive_.configuration().x, diff_drive_.configuration().y};
-    double theta = diff_drive_.configuration().theta;
-    turtlelib::Transform2D T_wr = turtlelib::Transform2D(vec, theta);
-    turtlelib::Transform2D T_rw = T_wr.inv();
-    visualization_msgs::msg::MarkerArray sensor_array;
-
-    for (size_t i = 0; i < obstacles_x_.size(); i++) {
-      turtlelib::Vector2D obs_vec{obstacles_x_.at(i), obstacles_y_.at(i)};
-      turtlelib::Vector2D v_ro = T_rw(obs_vec);
-      turtlelib::Vector2D noise_vec{v_ro.x + sensor_n_dist_(get_random()), v_ro.y + sensor_n_dist_(get_random())};
-      turtlelib::Vector2D obs_w_noise = T_wr(noise_vec);
-      double distance = std::sqrt(pow(v_ro.x, 2) + pow(v_ro.y, 2));
-
-      visualization_msgs::msg::Marker sensor_marker;
-      sensor_marker.header.frame_id = "red/base_footprint";
-      sensor_marker.header.stamp = get_clock()->now();
-      sensor_marker.id = i;
-      sensor_marker.type = visualization_msgs::msg::Marker::CYLINDER;
-
-      if (distance > max_range_) {
-        sensor_marker.action = visualization_msgs::msg::Marker::DELETE;
-      }
-      else {
-        sensor_marker.action = visualization_msgs::msg::Marker::ADD;
-      }
-
-      sensor_marker.pose.position.x = obs_w_noise.x;
-      sensor_marker.pose.position.y = obs_w_noise.y;
-      sensor_marker.pose.position.z = 0.125;
-      sensor_marker.scale.x = 2.0 * obstacles_r_;
-      sensor_marker.scale.y = 2.0 * obstacles_r_;
-      sensor_marker.scale.z = 0.25;
-      sensor_marker.color.r = 1.0;
-      sensor_marker.color.g = 1.0;
-      sensor_marker.color.b = 0.0;
-      sensor_marker.color.a = 1.0;
-      sensor_array.markers.push_back(sensor_marker);
-    }
-    fake_sensor_pub_->publish(sensor_array);
+    add_fake_sensor();
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -392,6 +361,80 @@ private:
       wall_marker.pose.position.z = 0.125;
       wall_marker.scale.z = 0.25;
       wall_array_.markers.push_back(wall_marker);
+    }
+  }
+
+  void add_fake_sensor()
+  {
+    turtlelib::Vector2D vec = {diff_drive_.configuration().x, diff_drive_.configuration().y};
+    double theta = diff_drive_.configuration().theta;
+    turtlelib::Transform2D T_wr = turtlelib::Transform2D(vec, theta);
+    turtlelib::Transform2D T_rw = T_wr.inv();
+    visualization_msgs::msg::MarkerArray sensor_array;
+
+    for (size_t i = 0; i < obstacles_x_.size(); i++) {
+      turtlelib::Vector2D obs_vec{obstacles_x_.at(i), obstacles_y_.at(i)};
+      turtlelib::Vector2D v_ro = T_rw(obs_vec);
+      // turtlelib::Vector2D noise_vec{v_ro.x + sensor_n_dist_(get_random()), v_ro.y + sensor_n_dist_(get_random())};
+      // turtlelib::Vector2D obs_w_noise = T_wr(noise_vec);
+
+      visualization_msgs::msg::Marker sensor_marker;
+      sensor_marker.header.frame_id = "red/base_footprint";
+      sensor_marker.header.stamp = get_clock()->now();
+      // sensor_marker.header.stamp.nanosec -= 50000000;
+      sensor_marker.id = i;
+      sensor_marker.type = visualization_msgs::msg::Marker::CYLINDER;
+
+      if (std::sqrt(std::pow(v_ro.x, 2) + std::pow(v_ro.y, 2)) > max_range_) {
+        sensor_marker.action = visualization_msgs::msg::Marker::DELETE;
+      }
+      else {
+        sensor_marker.action = visualization_msgs::msg::Marker::ADD;
+      }
+
+      sensor_marker.pose.position.x = v_ro.x + sensor_n_dist_(get_random());
+      sensor_marker.pose.position.y = v_ro.y + sensor_n_dist_(get_random());
+      sensor_marker.pose.position.z = 0.125;
+      sensor_marker.scale.x = 2.0 * obstacles_r_;
+      sensor_marker.scale.y = 2.0 * obstacles_r_;
+      sensor_marker.scale.z = 0.25;
+      sensor_marker.color.r = 1.0;
+      sensor_marker.color.g = 1.0;
+      sensor_marker.color.b = 0.0;
+      sensor_marker.color.a = 1.0;
+      sensor_array.markers.push_back(sensor_marker);
+    }
+    fake_sensor_pub_->publish(sensor_array);
+  }
+
+  double calculate_distance(double x1, double x2, double y1, double y2)
+  {
+    double distance = std::sqrt(std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2));
+    return distance;
+  }
+
+  void check_collision()
+  {
+    turtlelib::Vector2D center_to_center, normalized_vec;
+    double distance, travel_distance;
+    turtlelib::Config config_after;
+
+    for (size_t i = 0; i < obstacles_x_.size(); i++) {
+      distance = calculate_distance(diff_drive_.configuration().x, obstacles_x_.at(i),
+        diff_drive_.configuration().y, obstacles_y_.at(i));
+      if (distance < collision_radius_ + obstacles_r_)
+      {
+        center_to_center.x = {diff_drive_.configuration().x - obstacles_x_.at(i)};
+        center_to_center.y = {diff_drive_.configuration().y - obstacles_y_.at(i)};
+        normalized_vec = turtlelib::normalize_vector(center_to_center);
+        travel_distance = collision_radius_ + obstacles_r_ -
+          calculate_distance(diff_drive_.configuration().x, obstacles_x_.at(i),
+          diff_drive_.configuration().y, obstacles_y_.at(i));
+        config_after.x = diff_drive_.configuration().x + travel_distance * normalized_vec.x;
+        config_after.y = diff_drive_.configuration().y + travel_distance * normalized_vec.y;
+        config_after.theta = diff_drive_.configuration().theta;
+        diff_drive_.set_configuration(config_after);
+      }
     }
   }
 

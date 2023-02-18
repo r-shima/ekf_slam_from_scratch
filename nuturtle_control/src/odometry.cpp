@@ -75,6 +75,8 @@ public:
 
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
+    timestep_ = 0;
+
     check_params();
   }
 
@@ -138,15 +140,20 @@ private:
 
     prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
 
-    pose_.header.stamp = get_clock()->now();
-    pose_.header.frame_id = odom_id_;
-    pose_.pose.position.x = diff_drive_.configuration().x;
-    pose_.pose.position.y = diff_drive_.configuration().y;
-    pose_.pose.position.z = 0.0;
+    timestep_++;
+    if (timestep_ % 100 == 1)
+    {
+      pose_.header.stamp = get_clock()->now();
+      pose_.header.frame_id = odom_id_;
+      pose_.pose.position.x = diff_drive_.configuration().x;
+      pose_.pose.position.y = diff_drive_.configuration().y;
+      pose_.pose.position.z = 0.0;
     
-    path_.header.stamp = get_clock()->now();
-    path_.header.frame_id = odom_id_;
-    path_.poses.push_back(pose_);
+      path_.header.stamp = get_clock()->now();
+      path_.header.frame_id = odom_id_;
+      path_.poses.push_back(pose_);
+    }
+
     path_pub_->publish(path_);
   }
 
@@ -182,6 +189,7 @@ private:
   sensor_msgs::msg::JointState prev_angle_;
   nav_msgs::msg::Path path_;
   geometry_msgs::msg::PoseStamped pose_;
+  int timestep_;
 };
 
 /// \brief The main function

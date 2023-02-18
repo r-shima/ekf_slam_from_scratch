@@ -77,4 +77,10 @@ namespace turtlelib {
         Twist2D twist = get_twist(phi_dot);
         return twist;
     }
+
+    void DiffDrive::set_configuration(Config config) {
+        q.x = config.x;
+        q.y = config.y;
+        q.theta = config.theta;
+    }
 }
