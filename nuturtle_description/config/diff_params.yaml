@@ -9,3 +9,9 @@
     input_noise: 0.01
     slip_fraction: 0.01
     max_range: 10.0
+    lidar_min_range: 0.11999999731779099
+    lidar_max_range: 3.5
+    lidar_angle_increment: 0.01745329238474369
+    lidar_num_of_samples: 360
+    lidar_resolution: 1
+    lidar_noise_variance: 0.01

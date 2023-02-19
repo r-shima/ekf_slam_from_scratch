@@ -51,6 +51,7 @@
 #include "nuturtlebot_msgs/msg/sensor_data.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "sensor_msgs/msg/laser_scan.hpp"
 
 std::mt19937 & get_random()
 {
@@ -91,6 +92,12 @@ public:
     declare_parameter("slip_fraction", 0.01);
     declare_parameter("basic_sensor_variance", 0.01);
     declare_parameter("max_range", 10.0);
+    declare_parameter("lidar_min_range", 0.11999999731779099);
+    declare_parameter("lidar_max_range", 3.5);
+    declare_parameter("lidar_angle_increment", 0.01745329238474369);
+    declare_parameter("lidar_num_of_samples", 360);
+    declare_parameter("lidar_resolution", 1);
+    declare_parameter("lidar_noise_variance", 0.01);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -112,12 +119,19 @@ public:
     slip_fraction_ = get_parameter("slip_fraction").get_parameter_value().get<double>();
     basic_sensor_variance_ = get_parameter("basic_sensor_variance").get_parameter_value().get<double>();
     max_range_ = get_parameter("max_range").get_parameter_value().get<double>();
+    lidar_min_range_ = get_parameter("lidar_min_range").get_parameter_value().get<double>();
+    lidar_max_range_ = get_parameter("lidar_max_range").get_parameter_value().get<double>();
+    lidar_angle_increment_ = get_parameter("lidar_angle_increment").get_parameter_value().get<double>();
+    lidar_num_of_samples_ = get_parameter("lidar_num_of_samples").get_parameter_value().get<int>();
+    lidar_resolution_ = get_parameter("lidar_resolution").get_parameter_value().get<int>();
+    lidar_noise_variance_ = get_parameter("lidar_noise_variance").get_parameter_value().get<double>();
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
     sensor_data_pub_ = create_publisher<nuturtlebot_msgs::msg::SensorData>("red/sensor_data", 10);
     path_pub_ = create_publisher<nav_msgs::msg::Path>("red/path", 10);
     fake_sensor_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/fake_sensor", 10);
+    laser_scan_pub_ = create_publisher<sensor_msgs::msg::LaserScan>("/laser_scan", 10);
     wheel_cmd_sub_ = create_subscription<nuturtlebot_msgs::msg::WheelCommands>(
       "red/wheel_cmd", 10, std::bind(
         &Nusim::wheel_cmd_callback, this,
@@ -163,6 +177,7 @@ public:
     n_dist_ = std::normal_distribution<>{0.0, input_noise_};
     u_dist_ = std::uniform_real_distribution<>{-slip_fraction_, slip_fraction_};
     sensor_n_dist_ = std::normal_distribution<>{0.0, basic_sensor_variance_};
+    lidar_n_dist_ = std::normal_distribution<>{0.0, lidar_noise_variance_};
 
     check_params();
     add_obstacles();
@@ -179,12 +194,12 @@ private:
   {
     auto message = std_msgs::msg::UInt64();
     message.data = timestep_++;
-    RCLCPP_INFO_STREAM(get_logger(), "Publishing: " << message.data);
+    // RCLCPP_INFO_STREAM(get_logger(), "Publishing: " << message.data);
     timestep_pub_->publish(message);
 
     geometry_msgs::msg::TransformStamped t;
     t.header.stamp = get_clock()->now();
-    t.header.stamp.nanosec += 50000000;
+    // t.header.stamp.nanosec += 50000000;
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
     t.transform.translation.x = x_;
@@ -240,6 +255,7 @@ private:
 
   void timer2_callback() {
     add_fake_sensor();
+    simulate_lidar();
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -438,6 +454,81 @@ private:
     }
   }
 
+  void simulate_lidar()
+  {
+    laser_scan_.header.stamp = get_clock()->now();
+    laser_scan_.header.stamp.nanosec -= 2e8;
+    laser_scan_.header.frame_id = "red/base_scan";
+    laser_scan_.angle_min = 0.0;
+    laser_scan_.angle_max = 6.2657318115234375;
+    laser_scan_.angle_increment = lidar_angle_increment_;
+    laser_scan_.time_increment = 0.0005574136157520115;
+    laser_scan_.scan_time = 0.20066890120506287;
+    laser_scan_.range_min = lidar_min_range_;
+    laser_scan_.range_max = lidar_max_range_;
+    laser_scan_.ranges.resize(lidar_num_of_samples_);
+    // std::vector<float> ranges(lidar_num_of_samples_);
+    // laser_scan_.ranges = ranges;
+
+    double max_x, max_y, slope, alpha, a, b, c, determinant, distance1, distance2;
+    turtlelib::Vector2D intersect1, intersect2;
+
+    for (int i = 0; i < lidar_num_of_samples_; i++) {
+      double chosen_distance = 0.0;
+      for (size_t j = 0; j < obstacles_x_.size(); j++) {
+        max_x = diff_drive_.configuration().x + lidar_max_range_ * cos(i * lidar_angle_increment_ +
+          diff_drive_.configuration().theta);
+        max_y = diff_drive_.configuration().y + lidar_max_range_ * sin(i * lidar_angle_increment_ + 
+          diff_drive_.configuration().theta);
+        slope = (max_y - diff_drive_.configuration().y) / (max_x - diff_drive_.configuration().x);
+        alpha = diff_drive_.configuration().y - slope * diff_drive_.configuration().x -
+          obstacles_y_.at(j);
+        a = 1.0 + std::pow(slope, 2);
+        b = 2.0 * (alpha * slope - obstacles_x_.at(j));
+        c = std::pow(obstacles_x_.at(j), 2) + std::pow(alpha, 2) - std::pow(obstacles_r_, 2);
+        determinant = std::pow(b, 2) - 4.0 * a * c;
+
+        if (determinant == 0.0) {
+          intersect1.x = -b / (2 * a);
+          intersect1.y = slope * (intersect1.x - diff_drive_.configuration().x) +
+            diff_drive_.configuration().y;
+          chosen_distance = calculate_distance(intersect1.x, diff_drive_.configuration().x,
+            intersect1.y, diff_drive_.configuration().y);
+        }
+        else if (determinant > 0.0) {
+          intersect1.x = (-b + std::sqrt(determinant)) / (2 * a);
+          intersect1.y = slope * (intersect1.x - diff_drive_.configuration().x) +
+            diff_drive_.configuration().y;
+          intersect2.x = (-b - std::sqrt(determinant)) / (2 * a);
+          intersect2.y = slope * (intersect2.x - diff_drive_.configuration().x) +
+            diff_drive_.configuration().y;
+
+          distance1 = calculate_distance(intersect1.x, diff_drive_.configuration().x, intersect1.y,
+            diff_drive_.configuration().y);
+          distance2 = calculate_distance(intersect2.x, diff_drive_.configuration().x, intersect2.y,
+            diff_drive_.configuration().y);
+
+          if (distance1 < distance2) {
+            if ((intersect1.x - diff_drive_.configuration().x) / (max_x -
+              diff_drive_.configuration().x) > 0 && (intersect1.y - diff_drive_.configuration().y)
+                / (max_y - diff_drive_.configuration().y) > 0) {
+              chosen_distance = distance1;
+            }
+          }
+          else {
+            if ((intersect2.x - diff_drive_.configuration().x) / (max_x -
+              diff_drive_.configuration().x) > 0 && (intersect2.y - diff_drive_.configuration().y)
+                / (max_y - diff_drive_.configuration().y) > 0) {
+              chosen_distance = distance2;
+            }
+          }
+        }
+      }
+      laser_scan_.ranges.at(i) = chosen_distance + lidar_n_dist_(get_random());
+    }
+    laser_scan_pub_->publish(laser_scan_);
+  }
+
   // Declare private variables for the publishers, a subscriber, a timer, services, and a
   // broadcaster
   rclcpp::Publisher<std_msgs::msg::UInt64>::SharedPtr timestep_pub_;
@@ -446,6 +537,7 @@ private:
   rclcpp::Publisher<nuturtlebot_msgs::msg::SensorData>::SharedPtr sensor_data_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_pub_;
+  rclcpp::Publisher<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_pub_;
   rclcpp::Subscription<nuturtlebot_msgs::msg::WheelCommands>::SharedPtr wheel_cmd_sub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::TimerBase::SharedPtr timer2_;
@@ -467,17 +559,19 @@ private:
   turtlelib::WheelVelocity new_vel_;
   double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_,
     collision_radius_, input_noise_, slip_fraction_, basic_sensor_variance_, max_range_;
-  int motor_cmd_max_;
+  double lidar_min_range_, lidar_max_range_, lidar_angle_increment_, lidar_noise_variance_;
+  int motor_cmd_max_, lidar_num_of_samples_, lidar_resolution_;
   nuturtlebot_msgs::msg::SensorData sensor_data_;
   turtlelib::DiffDrive diff_drive_;
   double x_, y_, theta_, dt_;
   nav_msgs::msg::Path path_;
   geometry_msgs::msg::PoseStamped pose_;
-  double left_noise_;
-  double right_noise_;
+  double left_noise_, right_noise_;
   std::normal_distribution<> n_dist_{0.0, 0.0};
   std::uniform_real_distribution<> u_dist_{0.0, 0.0};
   std::normal_distribution<> sensor_n_dist_{0.0, 0.0};
+  sensor_msgs::msg::LaserScan laser_scan_;
+  std::normal_distribution<> lidar_n_dist_{0.0, 0.0};
 };
 
 /// \brief The main function

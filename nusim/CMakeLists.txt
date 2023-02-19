@@ -16,6 +16,7 @@ find_package(visualization_msgs REQUIRED)
 find_package(turtlelib REQUIRED)
 find_package(nuturtlebot_msgs REQUIRED)
 find_package(nav_msgs)
+find_package(sensor_msgs)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}_srv "srv/Teleport.srv" LIBRARY_NAME ${PROJECT_NAME})
@@ -31,7 +32,8 @@ ament_target_dependencies(nusim
   tf2_ros
   visualization_msgs
   nuturtlebot_msgs
-  nav_msgs)
+  nav_msgs
+  sensor_msgs)
 
 target_link_libraries(nusim turtlelib::turtlelib "${cpp_typesupport_target}")
 
