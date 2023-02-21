@@ -174,10 +174,10 @@ public:
 
     left_noise_ = 0.0;
     right_noise_ = 0.0;
-    n_dist_ = std::normal_distribution<>{0.0, input_noise_};
+    n_dist_ = std::normal_distribution<>{0.0, std::sqrt(input_noise_)};
     u_dist_ = std::uniform_real_distribution<>{-slip_fraction_, slip_fraction_};
-    sensor_n_dist_ = std::normal_distribution<>{0.0, basic_sensor_variance_};
-    lidar_n_dist_ = std::normal_distribution<>{0.0, lidar_noise_variance_};
+    sensor_n_dist_ = std::normal_distribution<>{0.0, std::sqrt(basic_sensor_variance_)};
+    lidar_n_dist_ = std::normal_distribution<>{0.0, std::sqrt(lidar_noise_variance_)};
 
     check_params();
     add_obstacles();
@@ -194,7 +194,6 @@ private:
   {
     auto message = std_msgs::msg::UInt64();
     message.data = timestep_++;
-    // RCLCPP_INFO_STREAM(get_logger(), "Publishing: " << message.data);
     timestep_pub_->publish(message);
 
     geometry_msgs::msg::TransformStamped t;
@@ -467,14 +466,13 @@ private:
     laser_scan_.range_min = lidar_min_range_;
     laser_scan_.range_max = lidar_max_range_;
     laser_scan_.ranges.resize(lidar_num_of_samples_);
-    // std::vector<float> ranges(lidar_num_of_samples_);
-    // laser_scan_.ranges = ranges;
 
     double max_x, max_y, slope, alpha, a, b, c, determinant, distance1, distance2;
-    turtlelib::Vector2D intersect1, intersect2;
+    turtlelib::Vector2D obs_intersect1, obs_intersect2, wall_intersect;
 
     for (int i = 0; i < lidar_num_of_samples_; i++) {
-      double chosen_distance = 0.0;
+      double chosen_distance = 1000.0;
+      double min_distance = 1000.0;
       for (size_t j = 0; j < obstacles_x_.size(); j++) {
         max_x = diff_drive_.configuration().x + lidar_max_range_ * cos(i * lidar_angle_increment_ +
           diff_drive_.configuration().theta);
@@ -488,43 +486,104 @@ private:
         c = std::pow(obstacles_x_.at(j), 2) + std::pow(alpha, 2) - std::pow(obstacles_r_, 2);
         determinant = std::pow(b, 2) - 4.0 * a * c;
 
-        if (determinant == 0.0) {
-          intersect1.x = -b / (2 * a);
-          intersect1.y = slope * (intersect1.x - diff_drive_.configuration().x) +
+        if (determinant < 0.0) {
+          double wall1_x = walls_x_length_ / 2;
+          double wall1_y = slope * (wall1_x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
-          chosen_distance = calculate_distance(intersect1.x, diff_drive_.configuration().x,
-            intersect1.y, diff_drive_.configuration().y);
+          double wall1_distance = calculate_distance(wall1_x, diff_drive_.configuration().x, wall1_y,
+            diff_drive_.configuration().y);
+      
+          double wall2_x = -walls_x_length_ / 2;
+          double wall2_y = slope * (wall2_x - diff_drive_.configuration().x) +
+            diff_drive_.configuration().y;
+          double wall2_distance = calculate_distance(wall2_x, diff_drive_.configuration().x, wall2_y,
+            diff_drive_.configuration().y);
+
+          double wall3_y = walls_y_length_ / 2;
+          double wall3_x = (wall3_y - diff_drive_.configuration().y) / slope +
+            diff_drive_.configuration().x;
+          double wall3_distance = calculate_distance(wall3_x, diff_drive_.configuration().x, wall3_y,
+            diff_drive_.configuration().y);
+
+          double wall4_y = -walls_y_length_ / 2;
+          double wall4_x = (wall4_y - diff_drive_.configuration().y) / slope +
+            diff_drive_.configuration().x;
+          double wall4_distance = calculate_distance(wall4_x, diff_drive_.configuration().x, wall4_y,
+            diff_drive_.configuration().y);
+
+          if ((wall1_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
+            > 0 && (wall1_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0) {
+            if (wall1_distance < chosen_distance) {
+                chosen_distance = wall1_distance;
+            }
+          }
+          if ((wall2_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
+            > 0 && (wall2_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0) {
+            if (wall2_distance < chosen_distance) {
+                chosen_distance = wall2_distance;
+            }
+          }
+          if ((wall3_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
+            > 0 && (wall3_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0) {
+            if (wall3_distance < chosen_distance) {
+                chosen_distance = wall3_distance;
+            }
+          }
+          if ((wall4_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
+            > 0 && (wall4_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0) {
+            if (wall4_distance < chosen_distance) {
+                chosen_distance = wall4_distance;
+            }
+          }
         }
-        else if (determinant > 0.0) {
-          intersect1.x = (-b + std::sqrt(determinant)) / (2 * a);
-          intersect1.y = slope * (intersect1.x - diff_drive_.configuration().x) +
+        else if (determinant == 0.0) {
+          obs_intersect1.x = -b / (2 * a);
+          obs_intersect1.y = slope * (obs_intersect1.x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
-          intersect2.x = (-b - std::sqrt(determinant)) / (2 * a);
-          intersect2.y = slope * (intersect2.x - diff_drive_.configuration().x) +
+          if ((obs_intersect1.x - diff_drive_.configuration().x) / (max_x -
+            diff_drive_.configuration().x) > 0 && (obs_intersect1.y -
+            diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0) {
+            chosen_distance = calculate_distance(obs_intersect1.x, diff_drive_.configuration().x,
+            obs_intersect1.y, diff_drive_.configuration().y);
+          }
+        }
+        else {
+          obs_intersect1.x = (-b + std::sqrt(determinant)) / (2.0 * a);
+          obs_intersect1.y = slope * (obs_intersect1.x - diff_drive_.configuration().x) +
+            diff_drive_.configuration().y;
+          obs_intersect2.x = (-b - std::sqrt(determinant)) / (2.0 * a);
+          obs_intersect2.y = slope * (obs_intersect2.x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
 
-          distance1 = calculate_distance(intersect1.x, diff_drive_.configuration().x, intersect1.y,
-            diff_drive_.configuration().y);
-          distance2 = calculate_distance(intersect2.x, diff_drive_.configuration().x, intersect2.y,
-            diff_drive_.configuration().y);
+          distance1 = calculate_distance(obs_intersect1.x, diff_drive_.configuration().x,
+            obs_intersect1.y, diff_drive_.configuration().y);
+          distance2 = calculate_distance(obs_intersect2.x, diff_drive_.configuration().x,
+            obs_intersect2.y, diff_drive_.configuration().y);
 
           if (distance1 < distance2) {
-            if ((intersect1.x - diff_drive_.configuration().x) / (max_x -
-              diff_drive_.configuration().x) > 0 && (intersect1.y - diff_drive_.configuration().y)
-                / (max_y - diff_drive_.configuration().y) > 0) {
+            if ((obs_intersect1.x - diff_drive_.configuration().x) / (max_x -
+              diff_drive_.configuration().x) > 0 && (obs_intersect1.y -
+              diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0) {
               chosen_distance = distance1;
             }
           }
           else {
-            if ((intersect2.x - diff_drive_.configuration().x) / (max_x -
-              diff_drive_.configuration().x) > 0 && (intersect2.y - diff_drive_.configuration().y)
-                / (max_y - diff_drive_.configuration().y) > 0) {
+            if ((obs_intersect2.x - diff_drive_.configuration().x) / (max_x -
+              diff_drive_.configuration().x) > 0 && (obs_intersect2.y -
+              diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0) {
               chosen_distance = distance2;
             }
           }
         }
+        if (chosen_distance < min_distance) {
+          min_distance = chosen_distance;
+        }
       }
-      laser_scan_.ranges.at(i) = chosen_distance + lidar_n_dist_(get_random());
+      laser_scan_.ranges.at(i) = min_distance + lidar_n_dist_(get_random());
     }
     laser_scan_pub_->publish(laser_scan_);
   }
