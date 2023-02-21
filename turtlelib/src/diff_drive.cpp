@@ -4,19 +4,34 @@
 #include "turtlelib/diff_drive.hpp"
 
 namespace turtlelib {
+    // DiffDrive::DiffDrive()
+    // : w_radius{wheel_radius},
+    //   t_width{track_width},
+    //   phi{0.0, 0.0},
+    //   q{0.0, 0.0, 0.0}
+    // {}
+
     DiffDrive::DiffDrive()
-    : w_radius{wheel_radius},
-      t_width{track_width},
-      phi{0.0, 0.0},
-      q{0.0, 0.0, 0.0}
+    : DiffDrive(wheel_radius, track_width, {0.0, 0.0, 0.0})
     {}
 
+    // DiffDrive::DiffDrive(double radius, double width)
+    // : w_radius{radius},
+    //   t_width{width},
+    //   phi{0.0, 0.0},
+    //   q{0.0, 0.0, 0.0}
+    // {}
+
     DiffDrive::DiffDrive(double radius, double width)
-    : w_radius{radius},
-      t_width{width},
-      phi{0.0, 0.0},
-      q{0.0, 0.0, 0.0}
+    : DiffDrive(radius, width, {0.0, 0.0, 0.0})
     {}
+
+    // DiffDrive::DiffDrive(double radius, double width, Config config)
+    // : w_radius{radius},
+    //   t_width{width},
+    //   phi{0.0, 0.0},
+    //   q{config.x, config.y, config.theta}
+    // {}
 
     DiffDrive::DiffDrive(double radius, double width, Config config)
     : w_radius{radius},
@@ -71,7 +86,7 @@ namespace turtlelib {
         return q;
     }
 
-    Twist2D DiffDrive::twist_to_angles(WheelAngle angle) {
+    Twist2D DiffDrive::angles_to_twist(WheelAngle angle) {
         phi_dot.l = angle.l - phi.l;
         phi_dot.r = angle.r - phi.r;
         Twist2D twist = get_twist(phi_dot);

@@ -105,7 +105,7 @@ private:
     angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
     diff_drive_.forward_kinematics(angle_);
 
-    t_.header.stamp = this->get_clock()->now();
+    t_.header.stamp = get_clock()->now();
     t_.header.frame_id = odom_id_;
     t_.child_frame_id = body_id_;
     t_.transform.translation.x = diff_drive_.configuration().x;
@@ -121,8 +121,8 @@ private:
 
     tf_broadcaster_->sendTransform(t_);
 
-    turtlelib::Twist2D twist = diff_drive_.twist_to_angles(angle_);
-    odom_.header.stamp = this->get_clock()->now();
+    turtlelib::Twist2D twist = diff_drive_.angles_to_twist(angle_);
+    odom_.header.stamp = get_clock()->now();
     odom_.header.frame_id = odom_id_;
     odom_.child_frame_id = body_id_;
     odom_.pose.pose.position.x = diff_drive_.configuration().x;

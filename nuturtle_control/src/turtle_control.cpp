@@ -62,7 +62,7 @@ public:
         &TurtleControl::sensor_data_callback, this,
         std::placeholders::_1));
 
-    time_flag_ = 1.0;
+    time_flag_ = true;
 
     check_params();
   }
@@ -121,17 +121,17 @@ private:
   /// \returns none
   void sensor_data_callback(const nuturtlebot_msgs::msg::SensorData & msg)
   {
-    if (time_flag_ == 1.0) {
+    if (time_flag_ == true) {
       joint_state_.header.stamp = get_clock()->now();
       joint_state_.position = {0.0, 0.0};
       joint_state_.velocity = {0.0, 0.0};
-      time_flag_ = 0.0;
+      time_flag_ = false;
     }
 
     time_diff_ = (msg.stamp.sec + 1e-9 * msg.stamp.nanosec) -
       (joint_state_.header.stamp.sec + 1e-9 * joint_state_.header.stamp.nanosec);
     auto temp = sensor_msgs::msg::JointState();
-    temp.header.stamp = this->get_clock()->now();
+    temp.header.stamp = get_clock()->now();
     temp.name = {"wheel_left_joint", "wheel_right_joint"};
     temp.position = {msg.left_encoder / encoder_ticks_per_rad_,
       msg.right_encoder / encoder_ticks_per_rad_};
@@ -158,7 +158,8 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
 
   double wheel_radius_, track_width_, motor_cmd_per_rad_sec_, encoder_ticks_per_rad_,
-    collision_radius_, time_diff_, prev_stamp_, time_flag_;
+    collision_radius_, time_diff_, prev_stamp_;
+  bool time_flag_;
   int motor_cmd_max_;
   turtlelib::Twist2D twist_;
   turtlelib::WheelVelocity vel_;

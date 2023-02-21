@@ -91,7 +91,7 @@ namespace turtlelib {
             /// \brief calculate the twist from wheel angles
             /// \param angle - the new wheel angles
             /// \return the twist
-            Twist2D twist_to_angles(WheelAngle angle);
+            Twist2D angles_to_twist(WheelAngle angle);
 
             /// \brief set the configuration of the robot
             /// \param config - the configuration

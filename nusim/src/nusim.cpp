@@ -198,7 +198,6 @@ private:
 
     geometry_msgs::msg::TransformStamped t;
     t.header.stamp = get_clock()->now();
-    // t.header.stamp.nanosec += 50000000;
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
     t.transform.translation.x = x_;
@@ -390,13 +389,10 @@ private:
     for (size_t i = 0; i < obstacles_x_.size(); i++) {
       turtlelib::Vector2D obs_vec{obstacles_x_.at(i), obstacles_y_.at(i)};
       turtlelib::Vector2D v_ro = T_rw(obs_vec);
-      // turtlelib::Vector2D noise_vec{v_ro.x + sensor_n_dist_(get_random()), v_ro.y + sensor_n_dist_(get_random())};
-      // turtlelib::Vector2D obs_w_noise = T_wr(noise_vec);
 
       visualization_msgs::msg::Marker sensor_marker;
       sensor_marker.header.frame_id = "red/base_footprint";
       sensor_marker.header.stamp = get_clock()->now();
-      // sensor_marker.header.stamp.nanosec -= 50000000;
       sensor_marker.id = i;
       sensor_marker.type = visualization_msgs::msg::Marker::CYLINDER;
 
