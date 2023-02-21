@@ -4,34 +4,13 @@
 #include "turtlelib/diff_drive.hpp"
 
 namespace turtlelib {
-    // DiffDrive::DiffDrive()
-    // : w_radius{wheel_radius},
-    //   t_width{track_width},
-    //   phi{0.0, 0.0},
-    //   q{0.0, 0.0, 0.0}
-    // {}
-
     DiffDrive::DiffDrive()
     : DiffDrive(wheel_radius, track_width, {0.0, 0.0, 0.0})
     {}
 
-    // DiffDrive::DiffDrive(double radius, double width)
-    // : w_radius{radius},
-    //   t_width{width},
-    //   phi{0.0, 0.0},
-    //   q{0.0, 0.0, 0.0}
-    // {}
-
     DiffDrive::DiffDrive(double radius, double width)
     : DiffDrive(radius, width, {0.0, 0.0, 0.0})
     {}
-
-    // DiffDrive::DiffDrive(double radius, double width, Config config)
-    // : w_radius{radius},
-    //   t_width{width},
-    //   phi{0.0, 0.0},
-    //   q{config.x, config.y, config.theta}
-    // {}
 
     DiffDrive::DiffDrive(double radius, double width, Config config)
     : w_radius{radius},
