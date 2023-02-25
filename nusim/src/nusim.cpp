@@ -198,6 +198,7 @@ private:
 
     geometry_msgs::msg::TransformStamped t;
     t.header.stamp = get_clock()->now();
+    // t.header.stamp.nanosec += 5e7;
     t.header.frame_id = "nusim/world";
     t.child_frame_id = "red/base_footprint";
     t.transform.translation.x = x_;
@@ -393,6 +394,7 @@ private:
       visualization_msgs::msg::Marker sensor_marker;
       sensor_marker.header.frame_id = "red/base_footprint";
       sensor_marker.header.stamp = get_clock()->now();
+      sensor_marker.header.stamp.nanosec -= 5e7;
       sensor_marker.id = i;
       sensor_marker.type = visualization_msgs::msg::Marker::CYLINDER;
 
@@ -452,12 +454,12 @@ private:
   void simulate_lidar()
   {
     laser_scan_.header.stamp = get_clock()->now();
-    laser_scan_.header.stamp.nanosec -= 2e8;
+    // laser_scan_.header.stamp.nanosec -= 2e8;
     laser_scan_.header.frame_id = "red/base_scan";
     laser_scan_.angle_min = 0.0;
     laser_scan_.angle_max = 6.2657318115234375;
     laser_scan_.angle_increment = lidar_angle_increment_;
-    laser_scan_.time_increment = 0.0005574136157520115;
+    laser_scan_.time_increment = 0.0; // 0.0005574136157520115;
     laser_scan_.scan_time = 0.20066890120506287;
     laser_scan_.range_min = lidar_min_range_;
     laser_scan_.range_max = lidar_max_range_;
