@@ -27,9 +27,11 @@
 #include "nav_msgs/msg/odometry.hpp"
 #include "sensor_msgs/msg/joint_state.hpp"
 #include "turtlelib/diff_drive.hpp"
-// #include "nuturtle_control/srv/initial_pose.hpp"
+#include "nuturtle_control/srv/initial_pose.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
+#include "visualization_msgs/msg/marker_array.hpp"
+#include "turtlelib/ekf.hpp"
 
 using namespace std::chrono_literals;
 
@@ -61,15 +63,19 @@ public:
       "joint_states", 10, std::bind(
         &Slam::joint_states_callback, this,
         std::placeholders::_1));
+    fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
+      "/nusim/fake_sensor", 10, std::bind(
+        &Slam::fake_sensor_callback, this,
+        std::placeholders::_1));
     tf_broadcaster_ =
       std::make_unique<tf2_ros::TransformBroadcaster>(*this);
-    // initial_pose_ = create_service<nuturtle_control::srv::InitialPose>(
-    //   "/initial_pose",
-    //   std::bind(
-    //     &Odometry::initial_pose_callback,
-    //     this,
-    //     std::placeholders::_1,
-    //     std::placeholders::_2));
+    initial_pose_ = create_service<nuturtle_control::srv::InitialPose>(
+      "/initial_pose",
+      std::bind(
+        &Slam::initial_pose_callback,
+        this,
+        std::placeholders::_1,
+        std::placeholders::_2));
 
     prev_angle_.position = {0.0, 0.0};
 
@@ -121,15 +127,15 @@ private:
 
     tf_broadcaster_->sendTransform(t_);
 
-    turtlelib::Twist2D twist = diff_drive_.angles_to_twist(angle_);
+    twist_ = diff_drive_.angles_to_twist(angle_);
     odom_.header.stamp = get_clock()->now();
     odom_.header.frame_id = odom_id_;
     odom_.child_frame_id = body_id_;
     odom_.pose.pose.position.x = diff_drive_.configuration().x;
     odom_.pose.pose.position.y = diff_drive_.configuration().y;
     odom_.pose.pose.position.z = 0.0;
-    odom_.twist.twist.linear.x = twist.x;
-    odom_.twist.twist.angular.z = twist.w;
+    odom_.twist.twist.linear.x = twist_.x;
+    odom_.twist.twist.angular.z = twist_.w;
 
     odom_.pose.pose.orientation.x = q.x();
     odom_.pose.pose.orientation.y = q.y();
@@ -157,27 +163,41 @@ private:
     path_pub_->publish(path_);
   }
 
-//   /// \brief Callback function for the initial_pose. Resets the location of the odometry.
-//   ///
-//   /// \param request - x, y, and theta components of the initial pose
-//   /// \param response - not being used
-//   /// \returns none
-//   void initial_pose_callback(
-//     const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
-//     request, std::shared_ptr<nuturtle_control::srv::InitialPose::Response>)
-//   {
-//     config_.x = request->x;
-//     config_.y = request->y;
-//     config_.theta = request->theta;
-//     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_, config_};
-//   }
+  /// \brief Callback function for the initial_pose. Resets the location of the odometry.
+  ///
+  /// \param request - x, y, and theta components of the initial pose
+  /// \param response - not being used
+  /// \returns none
+  void initial_pose_callback(
+    const std::shared_ptr<nuturtle_control::srv::InitialPose::Request>
+    request, std::shared_ptr<nuturtle_control::srv::InitialPose::Response>)
+  {
+    config_.x = request->x;
+    config_.y = request->y;
+    config_.theta = request->theta;
+    diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_, config_};
+  }
+
+  void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg) {
+    ekf_.predict(twist_);
+
+    visualization_msgs::msg::MarkerArray landmarks = msg;
+    for (size_t i = 0; i < landmarks.markers.size(); i++)
+    {
+      if (landmarks.markers[i].action < 2)
+      {
+        ekf_.update(landmarks.markers[i].pose.position.x, landmarks.markers[i].pose.position.y, i);
+      }
+    }
+  }
 
   // Declare private variables
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
+  rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-//   rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
+  rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
 
   double wheel_radius_, track_width_;
   std::string body_id_, odom_id_, wheel_left_, wheel_right_;
@@ -190,6 +210,8 @@ private:
   nav_msgs::msg::Path path_;
   geometry_msgs::msg::PoseStamped pose_;
   int timestep_;
+  turtlelib::Twist2D twist_;
+  turtlelib::EKF ekf_;
 };
 
 /// \brief The main function
