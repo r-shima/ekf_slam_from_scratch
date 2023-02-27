@@ -23,7 +23,7 @@ namespace turtlelib {
         /// \brief the estimated covariance
         arma::mat estimated_covariance;
         /// \brief 
-        Twist2D ut{0.0, 0.0, 0.0};
+        arma::colvec ut{arma::colvec(2*n+3, 1, arma::fill::zeros)};
         /// \brief the previous twist
         Twist2D prev_twist{0.0, 0.0, 0.0};
         /// \brief the covariance matrix used for the sensor noise
@@ -51,7 +51,7 @@ namespace turtlelib {
             /// \brief compute the At matrix
             /// \param twist - the twist
             /// \return the At matrix
-            arma::mat calculate_At(Twist2D twist);
+            arma::mat calculate_At(arma::colvec twist);
 
             /// \brief predict the state and uncertainty
             /// \param twist - the twist

@@ -36,7 +36,7 @@ namespace turtlelib {
             arma::join_cols(zero_mat1, sigma_0m));
     }
 
-    arma::mat EKF::calculate_At(Twist2D twist) {
+    arma::mat EKF::calculate_At(arma::colvec twist) {
         double theta = xi(0, 0);
         arma::mat zero_mat1, zero_mat2, zero_mat3, mat1, mat2, I, At;
         zero_mat1 = arma::mat(3, 2*n, arma::fill::zeros);
@@ -45,15 +45,15 @@ namespace turtlelib {
         mat1 = arma::mat(3, 3, arma::fill::zeros);
         I = arma::mat(2*n+3, 2*n+3, arma::fill::eye);
 
-        if (almost_equal(twist.w, 0.0)) {
-            mat1(1, 0) = -twist.x * sin(theta);
-            mat1(2, 0) = twist.x * cos(theta);
+        if (almost_equal(twist(0), 0.0)) {
+            mat1(1, 0) = -twist(0) * sin(theta);
+            mat1(2, 0) = twist(0) * cos(theta);
         }
         else {
-            mat1(1, 0) = -(twist.x / twist.w) * cos(theta) + (twist.x / twist.w) *
-                cos(theta + twist.w);
-            mat1(2, 0) = -(twist.x / twist.w) * sin(theta) + (twist.x / twist.w) *
-                sin(theta + twist.w);
+            mat1(1, 0) = -(twist(1) / twist(0)) * cos(theta) + (twist(1) / twist(0)) *
+                cos(theta + twist(0));
+            mat1(2, 0) = -(twist(1) / twist(0)) * sin(theta) + (twist(1) / twist(0)) *
+                sin(theta + twist(0));
         }
 
         mat2 = arma::join_rows(arma::join_cols(mat1, zero_mat2),
@@ -63,34 +63,37 @@ namespace turtlelib {
     }
 
     void EKF::predict(Twist2D twist) {
-        double theta = xi(0, 0);
-        ut.w = normalize_angle(twist.w - prev_twist.w);
-        ut.x = twist.x - prev_twist.x;
-        ut.y = 0.0;
+        // double theta = xi(0, 0);
+        ut(0) = normalize_angle(twist.w - prev_twist.w);
+        ut(1) = twist.x - prev_twist.x;
+        ut(2) = twist.y - prev_twist.y;
         prev_twist = twist;
+        estimated_xi(0) += xi(0) + ut(0);
+        estimated_xi(1) += xi(1) + ut(1);
+        estimated_xi(2) += xi(2) + ut(2);
 
-        if (almost_equal(ut.w, 0.0)) {
-            arma::colvec delta_config{2*n+3, arma::fill::zeros};
-            // arma::colvec noise{2*n+3, arma::fill::zeros};
-            delta_config(1, 0) = ut.x * cos(theta);
-            delta_config(2, 0) = ut.x * sin(theta);
+        // if (almost_equal(ut.w, 0.0)) {
+        //     arma::colvec delta_config{2*n+3, arma::fill::zeros};
+        //     // arma::colvec noise{2*n+3, arma::fill::zeros};
+        //     delta_config(1, 0) = ut.x * cos(theta);
+        //     delta_config(2, 0) = ut.x * sin(theta);
             
-            // noise(0, 0) = 
-            // noise(1, 0) = 
-            // noise(2, 0) = 
+        //     // noise(0, 0) = 
+        //     // noise(1, 0) = 
+        //     // noise(2, 0) = 
 
-            estimated_xi += xi + delta_config; // + noise;
-        }
-        else {
-            arma::colvec delta_config{2*n+3, arma::fill::zeros};
-            delta_config(0, 0) = ut.w;
-            delta_config(1, 0) = -(ut.x / ut.w) * sin(theta) + (ut.x / ut.w) *
-                sin(theta + ut.w);
-            delta_config(2, 0) = (ut.x / ut.w) * cos(theta) - (ut.x / ut.w) *
-                cos(theta + ut.w);
+        //     estimated_xi += xi + delta_config; // + noise;
+        // }
+        // else {
+        //     arma::colvec delta_config{2*n+3, arma::fill::zeros};
+        //     delta_config(0, 0) = ut.w;
+        //     delta_config(1, 0) = -(ut.x / ut.w) * sin(theta) + (ut.x / ut.w) *
+        //         sin(theta + ut.w);
+        //     delta_config(2, 0) = (ut.x / ut.w) * cos(theta) - (ut.x / ut.w) *
+        //         cos(theta + ut.w);
 
-            estimated_xi += xi + delta_config;
-        }
+        //     estimated_xi += xi + delta_config;
+        // }
 
         arma::mat zero_mat1, zero_mat2, zero_mat3, Q_bar;
         zero_mat1 = arma::mat(3, 2*n, arma::fill::zeros);
