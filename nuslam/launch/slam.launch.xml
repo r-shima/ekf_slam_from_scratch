@@ -2,15 +2,15 @@
     <arg name="cmd_src" default="none" description="Lets the user set it to 'circle' to start the circle node, 'teleop' to start the teleop_twist_keyboard, and 'none' to start nothing"/>
     <arg name="robot" default="nusim" description="Lets the user set it to 'nusim' to start the nusim simulator, 'localhost' to run the nodes directly from the turtlebot3, and 'none' to not launch any additional nodes"/>
     <arg name="use_rviz" default="true" description="Determines whether or not to launch rviz with a configuration that enables seeing the robot model, tf frames, and the odometry"/>
-    <arg name="green_body_id" default="green/base_footprint" description="The name of the body frame of the robot"/>
-    <arg name="green_odom_id" default="green/odom" description="The name of the odometry frame"/>
+    <!-- <arg name="green_body_id" default="green/base_footprint" description="The name of the body frame of the robot"/> -->
+    <!-- <arg name="green_odom_id" default="green/odom" description="The name of the odometry frame"/> -->
     <arg name="wheel_left" default="wheel_left_joint" description="The name of the left wheel joint"/>
     <arg name="wheel_right" default="wheel_right_joint" description="The name of the right wheel joint"/>
 
     <node pkg="nuslam" exec="slam" name="slam">
         <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
-        <param name="green_body_id" value="$(var green_body_id)"/>
-        <param name="green_odom_id" value="$(var green_odom_id)"/>
+        <!-- <param name="green_body_id" value="$(var green_body_id)"/>
+        <param name="green_odom_id" value="$(var green_odom_id)"/> -->
         <param name="wheel_left" value="$(var wheel_left)"/>
         <param name="wheel_right" value="$(var wheel_right)"/>
         <remap from="/joint_states" to="blue/joint_states"/>
@@ -31,5 +31,5 @@
     <node pkg="rviz2" exec="rviz2" name="rviz2" args="-d $(find-pkg-share nuslam)/config/slam.rviz"/>
     
     <node pkg="tf2_ros" exec="static_transform_publisher" name="world_to_map" args="0 0 0 0 0 0 1 nusim/world map"/>
-    <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_green_odom" args="0 0 0 0 0 0 1 map green/odom"/>
+    <!-- <node pkg="tf2_ros" exec="static_transform_publisher" name="map_to_green_odom" args="0 0 0 0 0 0 1 map green/odom"/> -->
 </launch>

@@ -79,7 +79,7 @@ namespace turtlelib {
             // noise(1, 0) = 
             // noise(2, 0) = 
 
-            estimated_xi = xi + delta_config; // + noise;
+            estimated_xi += xi + delta_config; // + noise;
         }
         else {
             arma::colvec delta_config{2*n+3, arma::fill::zeros};
@@ -89,7 +89,7 @@ namespace turtlelib {
             delta_config(2, 0) = (ut.x / ut.w) * cos(theta) - (ut.x / ut.w) *
                 cos(theta + ut.w);
 
-            estimated_xi = xi + delta_config;
+            estimated_xi += xi + delta_config;
         }
 
         arma::mat zero_mat1, zero_mat2, zero_mat3, Q_bar;
@@ -98,7 +98,7 @@ namespace turtlelib {
         zero_mat3 = arma::mat(2*n, 2*n, arma::fill::zeros);
         Q_bar = arma::join_rows(arma::join_cols(Q, zero_mat2),
             arma::join_cols(zero_mat1, zero_mat3));
-        arma::mat At = calculate_At(twist);
+        arma::mat At = calculate_At(ut);
         estimated_covariance = At * covariance * At.t() + Q_bar;
     }
 
@@ -148,8 +148,8 @@ namespace turtlelib {
         double r = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
         double phi = atan2(y, x);
         arma::colvec z{2, arma::fill::zeros};
-        z(0, 0) = r;
-        z(1, 0) = phi;
+        z(0) = r;
+        z(1) = phi;
 
         if (landmarks.find(j) != landmarks.end()) {
             estimated_xi(2*j+3, 0) = estimated_xi(1, 0) + r * cos(phi + estimated_xi(0, 0));
@@ -190,5 +190,13 @@ namespace turtlelib {
         xi = estimated_xi + K * (z - z_hat);
         arma::mat I{2*n+3, 2*n+3, arma::fill::eye};
         covariance = (I - K * H) * estimated_covariance;
+    }
+
+    Config EKF::get_configuration() {
+        return {xi(1, 0), xi(2, 0), xi(0, 0)};
+    }
+
+    Config EKF::get_predicted_configuration() {
+        return {estimated_xi(1, 0), estimated_xi(2, 0), estimated_xi(0, 0)};
     }
 }

@@ -7,7 +7,7 @@
 #include <unordered_set>
 
 namespace turtlelib {
-    /// \brief the number of obstacles
+    /// \brief the number of landmarks
     constexpr int n = 20;
 
     /// \brief implements the Extended Kalman Filter
@@ -19,7 +19,7 @@ namespace turtlelib {
         /// \brief the covariance matrix used for the process noise
         arma::mat Q{arma::mat(3, 3, arma::fill::eye) * 0.0};
         /// \brief the estimated combined state vector
-        arma::mat estimated_xi;
+        arma::mat estimated_xi{arma::mat(2*n+3, 1, arma::fill::zeros)};
         /// \brief the estimated covariance
         arma::mat estimated_covariance;
         /// \brief 
@@ -48,9 +48,9 @@ namespace turtlelib {
             /// \return none
             void initialize_covariance();
 
-            /// \brief compute At
+            /// \brief compute the At matrix
             /// \param twist - the twist
-            /// \return At
+            /// \return the At matrix
             arma::mat calculate_At(Twist2D twist);
 
             /// \brief predict the state and uncertainty
@@ -64,6 +64,14 @@ namespace turtlelib {
             /// \param j - the marker id
             /// \return none
             void update(double x, double y, size_t j);
+
+            /// \brief get the robot configuration
+            /// \return the x, y, and theta of the configuration
+            Config get_configuration();
+
+            /// \brief get the predicted robot configuration
+            // \return the predicted x, y, and theta of the configuration
+            Config get_predicted_configuration();
     };
 }
 

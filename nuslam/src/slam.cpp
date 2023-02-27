@@ -46,7 +46,7 @@ public:
     // broadcaster
     declare_parameter("wheel_radius", -1.0);
     declare_parameter("track_width", -1.0);
-    declare_parameter("green_body_id", "");
+    declare_parameter("green_body_id", "green/base_footprint");
     declare_parameter("green_odom_id", "green/odom");
     declare_parameter("wheel_left", "");
     declare_parameter("wheel_right", "");
@@ -68,6 +68,8 @@ public:
         &Slam::fake_sensor_callback, this,
         std::placeholders::_1));
     tf_broadcaster_ =
+      std::make_unique<tf2_ros::TransformBroadcaster>(*this);
+    tf_broadcaster2_ =
       std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     initial_pose_ = create_service<nuturtle_control::srv::InitialPose>(
       "/initial_pose",
@@ -100,17 +102,12 @@ private:
     }
   }
 
-  /// \brief Callback function for the subscriber that subscribes to sensor_msgs/msg/JointState.
-  /// Updates the internal odometry state, broadcasts the transform, and publishes odometry.
+  /// \brief broadcast the transform between odom and body
   ///
-  /// \param msg - JointState object
+  /// \param none
   /// \returns none
-  void joint_states_callback(const sensor_msgs::msg::JointState & msg)
+  void broadcast_odom_to_body()
   {
-    angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
-    angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
-    diff_drive_.forward_kinematics(angle_);
-
     t_.header.stamp = get_clock()->now();
     t_.header.frame_id = odom_id_;
     t_.child_frame_id = body_id_;
@@ -126,6 +123,53 @@ private:
     t_.transform.rotation.w = q.w();
 
     tf_broadcaster_->sendTransform(t_);
+  }
+  
+  /// \brief broadcast the transform between map and odom
+  ///
+  /// \param none
+  /// \returns none
+  void broadcast_map_to_odom()
+  {
+    turtlelib::Config green_robot = ekf_.get_predicted_configuration();
+    RCLCPP_INFO_STREAM(get_logger(), "x: " << green_robot.x << " y: " << green_robot.y << " theta: " << green_robot.theta);
+    turtlelib::Transform2D T_mr{turtlelib::Vector2D{green_robot.x, green_robot.y},
+      green_robot.theta};
+    turtlelib::Transform2D T_or{turtlelib::Vector2D{diff_drive_.configuration().x,
+      diff_drive_.configuration().y}, diff_drive_.configuration().theta};
+    turtlelib::Transform2D T_mo = T_mr * T_or.inv();
+
+    map_odom_.header.stamp = get_clock()->now();
+    map_odom_.header.frame_id = "map";
+    map_odom_.child_frame_id = odom_id_;
+    map_odom_.transform.translation.x = T_mo.translation().x;
+    map_odom_.transform.translation.y = T_mo.translation().y;
+    map_odom_.transform.translation.z = 0.0;
+
+    tf2::Quaternion q;
+    q.setRPY(0, 0, T_mo.rotation());
+    map_odom_.transform.rotation.x = q.x();
+    map_odom_.transform.rotation.y = q.y();
+    map_odom_.transform.rotation.z = q.z();
+    map_odom_.transform.rotation.w = q.w();
+
+    tf_broadcaster2_->sendTransform(map_odom_);
+  }
+
+  /// \brief Callback function for the subscriber that subscribes to sensor_msgs/msg/JointState.
+  /// Updates the internal odometry state, broadcasts the transform, and publishes odometry.
+  ///
+  /// \param msg - JointState object
+  /// \returns none
+  void joint_states_callback(const sensor_msgs::msg::JointState & msg)
+  {
+    angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
+    angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
+    diff_drive_.forward_kinematics(angle_);
+
+    broadcast_odom_to_body();
+
+    broadcast_map_to_odom();
 
     twist_ = diff_drive_.angles_to_twist(angle_);
     odom_.header.stamp = get_clock()->now();
@@ -137,6 +181,8 @@ private:
     odom_.twist.twist.linear.x = twist_.x;
     odom_.twist.twist.angular.z = twist_.w;
 
+    tf2::Quaternion q;
+    q.setRPY(0, 0, diff_drive_.configuration().theta);
     odom_.pose.pose.orientation.x = q.x();
     odom_.pose.pose.orientation.y = q.y();
     odom_.pose.pose.orientation.z = q.z();
@@ -179,16 +225,16 @@ private:
   }
 
   void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg) {
-    ekf_.predict(twist_);
+    ekf_.predict(turtlelib::Twist2D{diff_drive_.configuration().theta, diff_drive_.configuration().x, diff_drive_.configuration().y});
 
-    visualization_msgs::msg::MarkerArray landmarks = msg;
-    for (size_t i = 0; i < landmarks.markers.size(); i++)
-    {
-      if (landmarks.markers[i].action < 2)
-      {
-        ekf_.update(landmarks.markers[i].pose.position.x, landmarks.markers[i].pose.position.y, i);
-      }
-    }
+    // visualization_msgs::msg::MarkerArray landmarks = msg;
+    // for (size_t i = 0; i < landmarks.markers.size(); i++)
+    // {
+    //   if (landmarks.markers.at(i).action < 2)
+    //   {
+    //     ekf_.update(landmarks.markers.at(i).pose.position.x, landmarks.markers.at(i).pose.position.y, i);
+    //   }
+    // }
   }
 
   // Declare private variables
@@ -196,14 +242,14 @@ private:
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
   rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
-  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_, tf_broadcaster2_;
   rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
 
   double wheel_radius_, track_width_;
   std::string body_id_, odom_id_, wheel_left_, wheel_right_;
   turtlelib::DiffDrive diff_drive_;
   turtlelib::WheelAngle angle_;
-  geometry_msgs::msg::TransformStamped t_;
+  geometry_msgs::msg::TransformStamped t_, map_odom_;
   nav_msgs::msg::Odometry odom_;
   turtlelib::Config config_;
   sensor_msgs::msg::JointState prev_angle_;

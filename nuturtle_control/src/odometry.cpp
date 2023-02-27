@@ -94,17 +94,12 @@ private:
     }
   }
 
-  /// \brief Callback function for the subscriber that subscribes to sensor_msgs/msg/JointState.
-  /// Updates the internal odometry state, broadcasts the transform, and publishes odometry.
+  /// \brief broadcast the transform between odom and body
   ///
-  /// \param msg - JointState object
+  /// \param none
   /// \returns none
-  void joint_states_callback(const sensor_msgs::msg::JointState & msg)
+  void broadcast_odom_to_body()
   {
-    angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
-    angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
-    diff_drive_.forward_kinematics(angle_);
-
     t_.header.stamp = get_clock()->now();
     t_.header.frame_id = odom_id_;
     t_.child_frame_id = body_id_;
@@ -120,6 +115,20 @@ private:
     t_.transform.rotation.w = q.w();
 
     tf_broadcaster_->sendTransform(t_);
+  }
+
+  /// \brief Callback function for the subscriber that subscribes to sensor_msgs/msg/JointState.
+  /// Updates the internal odometry state, broadcasts the transform, and publishes odometry.
+  ///
+  /// \param msg - JointState object
+  /// \returns none
+  void joint_states_callback(const sensor_msgs::msg::JointState & msg)
+  {
+    angle_.l = msg.position.at(0) - prev_angle_.position.at(0);
+    angle_.r = msg.position.at(1) - prev_angle_.position.at(1);
+    diff_drive_.forward_kinematics(angle_);
+
+    broadcast_odom_to_body();
 
     turtlelib::Twist2D twist = diff_drive_.angles_to_twist(angle_);
     odom_.header.stamp = get_clock()->now();
@@ -131,6 +140,8 @@ private:
     odom_.twist.twist.linear.x = twist.x;
     odom_.twist.twist.angular.z = twist.w;
 
+    tf2::Quaternion q;
+    q.setRPY(0, 0, diff_drive_.configuration().theta);
     odom_.pose.pose.orientation.x = q.x();
     odom_.pose.pose.orientation.y = q.y();
     odom_.pose.pose.orientation.z = q.z();
