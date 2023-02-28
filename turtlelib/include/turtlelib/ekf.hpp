@@ -21,8 +21,9 @@ namespace turtlelib {
         /// \brief the estimated combined state vector
         arma::mat estimated_xi{arma::colvec(2*n+3, arma::fill::zeros)};
         /// \brief the estimated covariance
-        arma::mat estimated_covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)};
-        /// \brief 
+        // arma::mat estimated_covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)};
+        arma::mat estimated_covariance;
+        /// \brief the change in twist
         arma::colvec ut{arma::colvec(2*n+3, 1, arma::fill::zeros)};
         /// \brief the previous twist
         Twist2D prev_twist{0.0, 0.0, 0.0};
@@ -72,8 +73,6 @@ namespace turtlelib {
             /// \brief get the predicted robot configuration
             // \return the predicted x, y, and theta of the configuration
             Config get_predicted_configuration();
-
-            // arma::mat get_covariance();
 
             arma::mat covariance;
     };

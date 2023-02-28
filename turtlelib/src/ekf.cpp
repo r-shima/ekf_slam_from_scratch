@@ -7,14 +7,12 @@
 namespace turtlelib {
     EKF::EKF()
     : xi{arma::colvec(2*n+3, arma::fill::zeros)}
-      // covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)}
     {
         initialize_covariance();
     }
 
     EKF::EKF(Config config)
     : xi{arma::colvec(2*n+3, arma::fill::zeros)}
-      // covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)}
     {
         initialize_state(config);
         initialize_covariance();
@@ -170,34 +168,17 @@ namespace turtlelib {
         z_hat(1) = phi_hat;
 
         arma::mat mat1, mat2, mat3, mat4, H;
-        // mat1 = arma::mat(2, 3, arma::fill::zeros);
-        // mat1(0, 1) = -delta_x / std::sqrt(d);
-        // mat1(0, 2) = -delta_y / std::sqrt(d);
-        // mat1(1, 0) = -1.0;
-        // mat1(1, 1) = delta_y / d;
-        // mat1(1, 2) = -delta_x / d;
-
         mat1 = {{0.0, -delta_x / std::sqrt(d), -delta_y / std::sqrt(d)},
                 {-1.0, delta_y / d, -delta_x / d}};
-
         mat2 = arma::mat(2, 2*j, arma::fill::zeros);
-
-        // mat3 = arma::mat(2, 2, arma::fill::zeros);
-        // mat3(0, 0) = delta_x / std::sqrt(d);
-        // mat3(0, 1) = delta_y / std::sqrt(d);
-        // mat3(1, 0) = -delta_y / d;
-        // mat3(1, 1) = delta_x / d;
-
         mat3 = {{delta_x / std::sqrt(d), delta_y / std::sqrt(d)},
                 {-delta_y / d, -delta_x / d}};
-
         mat4 = arma::mat(2, 2*n-2*(j+1), arma::fill::zeros);
-
         H = arma::join_rows(mat1, mat2, mat3, mat4);
         arma::mat K = estimated_covariance * H.t() * (H * estimated_covariance * H.t() + R).i();
         // Rj = R.submat(j, j, j+1, j+1);
         xi = estimated_xi + K * (z - z_hat);
-        // xi = estimated_xi;
+        // xi(0) = normalize_angle(xi(0));
         arma::mat I{2*n+3, 2*n+3, arma::fill::eye};
         covariance = (I - K * H) * estimated_covariance;
         estimated_covariance = covariance;
@@ -210,8 +191,4 @@ namespace turtlelib {
     Config EKF::get_predicted_configuration() {
         return {estimated_xi(1, 0), estimated_xi(2, 0), estimated_xi(0, 0)};
     }
-    
-    // arma::mat EKF::get_covariance() {
-    //     return covariance;
-    // }
 }
