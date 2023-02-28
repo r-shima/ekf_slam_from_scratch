@@ -6,14 +6,14 @@
 
 namespace turtlelib {
     EKF::EKF()
-    : xi{arma::mat(2*n+3, 1, arma::fill::zeros)}
+    : xi{arma::colvec(2*n+3, arma::fill::zeros)}
       // covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)}
     {
         initialize_covariance();
     }
 
     EKF::EKF(Config config)
-    : xi{arma::mat(2*n+3, 1, arma::fill::zeros)}
+    : xi{arma::colvec(2*n+3, arma::fill::zeros)}
       // covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)}
     {
         initialize_state(config);
@@ -21,9 +21,9 @@ namespace turtlelib {
     }
 
     void EKF::initialize_state(Config config) {
-        xi(0, 0) = config.theta;
-        xi(1, 0) = config.x;
-        xi(2, 0) = config.y;
+        xi(0) = config.theta;
+        xi(1) = config.x;
+        xi(2) = config.y;
     }
 
     void EKF::initialize_covariance() {
@@ -37,7 +37,7 @@ namespace turtlelib {
     }
 
     arma::mat EKF::calculate_At(arma::colvec twist) {
-        double theta = xi(0, 0);
+        double theta = xi(0);
         arma::mat zero_mat1, zero_mat2, zero_mat3, mat1, mat2, I, At;
         zero_mat1 = arma::mat(3, 2*n, arma::fill::zeros);
         zero_mat2 = arma::mat(2*n, 3, arma::fill::zeros);
@@ -68,9 +68,9 @@ namespace turtlelib {
         ut(1) = twist.x - prev_twist.x;
         ut(2) = twist.y - prev_twist.y;
         prev_twist = twist;
-        estimated_xi(0) += xi(0) + ut(0);
-        estimated_xi(1) += xi(1) + ut(1);
-        estimated_xi(2) += xi(2) + ut(2);
+        estimated_xi(0) = xi(0) + ut(0);
+        estimated_xi(1) = xi(1) + ut(1);
+        estimated_xi(2) = xi(2) + ut(2);
 
         // if (almost_equal(ut.w, 0.0)) {
         //     arma::colvec delta_config{2*n+3, arma::fill::zeros};
@@ -154,51 +154,53 @@ namespace turtlelib {
         z(0) = r;
         z(1) = phi;
 
-        if (landmarks.find(j) != landmarks.end()) {
-            estimated_xi(2*j+3, 0) = estimated_xi(1, 0) + r * cos(phi + estimated_xi(0, 0));
-            estimated_xi(2*j+4, 0) = estimated_xi(2, 0) + r * sin(phi + estimated_xi(0, 0));
+        if (landmarks.find(j) == landmarks.end()) {
+            estimated_xi(2*j+3) = estimated_xi(1) + r * cos(phi + estimated_xi(0));
+            estimated_xi(2*j+4) = estimated_xi(2) + r * sin(phi + estimated_xi(0));
             landmarks.insert(j);
         }
 
-        double delta_x = estimated_xi(2*j+3, 0) - estimated_xi(1, 0);
-        double delta_y = estimated_xi(2*j+4, 0) - estimated_xi(2, 0);
+        double delta_x = estimated_xi(2*j+3) - estimated_xi(1);
+        double delta_y = estimated_xi(2*j+4) - estimated_xi(2);
         double d = std::pow(delta_x, 2) + std::pow(delta_y, 2);
         double r_hat = std::sqrt(d);
-        double phi_hat = normalize_angle(atan2(delta_y, delta_x) - estimated_xi(0, 0));
+        double phi_hat = normalize_angle(atan2(delta_y, delta_x) - estimated_xi(0));
         arma::colvec z_hat{2, arma::fill::zeros};
-        z_hat(0, 0) = r_hat;
-        z_hat(1, 0) = phi_hat;
+        z_hat(0) = r_hat;
+        z_hat(1) = phi_hat;
 
         arma::mat mat1, mat2, mat3, mat4, H;
-        mat1 = arma::mat(2, 3, arma::fill::zeros);
-        mat1(0, 1) = -delta_x / std::sqrt(d);
-        mat1(0, 2) = -delta_y / std::sqrt(d);
-        mat1(1, 0) = -1.0;
-        mat1(1, 1) = delta_y / d;
-        mat1(1, 2) = -delta_x / d;
+        // mat1 = arma::mat(2, 3, arma::fill::zeros);
+        // mat1(0, 1) = -delta_x / std::sqrt(d);
+        // mat1(0, 2) = -delta_y / std::sqrt(d);
+        // mat1(1, 0) = -1.0;
+        // mat1(1, 1) = delta_y / d;
+        // mat1(1, 2) = -delta_x / d;
 
-        // mat1 = {{0.0, -delta_x / std::sqrt(d), -delta_y / std::sqrt(d)},
-        //         {-1.0, delta_y / d, -delta_x / d}};
+        mat1 = {{0.0, -delta_x / std::sqrt(d), -delta_y / std::sqrt(d)},
+                {-1.0, delta_y / d, -delta_x / d}};
 
         mat2 = arma::mat(2, 2*j, arma::fill::zeros);
 
-        mat3 = arma::mat(2, 2, arma::fill::zeros);
-        mat3(0, 0) = delta_x / std::sqrt(d);
-        mat3(0, 1) = delta_y / std::sqrt(d);
-        mat3(1, 0) = -delta_y / d;
-        mat3(1, 1) = delta_x / d;
+        // mat3 = arma::mat(2, 2, arma::fill::zeros);
+        // mat3(0, 0) = delta_x / std::sqrt(d);
+        // mat3(0, 1) = delta_y / std::sqrt(d);
+        // mat3(1, 0) = -delta_y / d;
+        // mat3(1, 1) = delta_x / d;
 
-        // mat3 = {{delta_x / std::sqrt(d), delta_y / std::sqrt(d)},
-        //         {-delta_y / d, -delta_x / d}};
+        mat3 = {{delta_x / std::sqrt(d), delta_y / std::sqrt(d)},
+                {-delta_y / d, -delta_x / d}};
 
         mat4 = arma::mat(2, 2*n-2*(j+1), arma::fill::zeros);
 
         H = arma::join_rows(mat1, mat2, mat3, mat4);
         arma::mat K = estimated_covariance * H.t() * (H * estimated_covariance * H.t() + R).i();
         // Rj = R.submat(j, j, j+1, j+1);
-        // xi = estimated_xi + K * (z - z_hat);
-        // arma::mat I{2*n+3, 2*n+3, arma::fill::eye};
-        // covariance = (I - K * H) * estimated_covariance;
+        xi = estimated_xi + K * (z - z_hat);
+        // xi = estimated_xi;
+        arma::mat I{2*n+3, 2*n+3, arma::fill::eye};
+        covariance = (I - K * H) * estimated_covariance;
+        estimated_covariance = covariance;
     }
 
     Config EKF::get_configuration() {
@@ -209,7 +211,7 @@ namespace turtlelib {
         return {estimated_xi(1, 0), estimated_xi(2, 0), estimated_xi(0, 0)};
     }
     
-    // arma::mat EKF::get_H() {
-    //     return K;
+    // arma::mat EKF::get_covariance() {
+    //     return covariance;
     // }
 }

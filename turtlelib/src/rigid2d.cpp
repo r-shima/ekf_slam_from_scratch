@@ -127,14 +127,26 @@ namespace turtlelib
     }
 
     double normalize_angle(double rad) {
-        double angle = fmod(rad, 2*PI);
-        if (angle > PI) {
-            angle = -PI + (angle - PI);
+        // double angle = fmod(rad, 2*PI);
+        // if (angle > PI) {
+        //     angle = -PI + (angle - PI);
+        // }
+        // else if(angle <= -PI) {
+        //     angle = PI - (angle + PI);
+        // }
+        // return angle;
+
+        // double deg = rad2deg(rad);
+        // return deg2rad(remainder(deg, 360.0));
+
+        rad = fmod(rad, 2 * PI);
+        if (rad < -PI) {
+            rad += 2 * PI;
+        } 
+        else if (rad > PI) {
+            rad -= 2 * PI;
         }
-        else if(angle <= -PI) {
-            angle = PI - (angle + PI);
-        }
-        return angle;
+        return rad;
     }
 
     Vector2D & Vector2D::operator+=(const Vector2D & rhs) {

@@ -8,18 +8,18 @@
 
 namespace turtlelib {
     /// \brief the number of landmarks
-    constexpr int n = 20;
+    constexpr int n = 3;
 
     /// \brief implements the Extended Kalman Filter
     class EKF {
         /// \brief the combined state vector containing the robot state and the map state
         arma::mat xi;
         /// \brief the covariance
-        arma::mat covariance;
+        // arma::mat covariance;
         /// \brief the covariance matrix used for the process noise
-        arma::mat Q{arma::mat(3, 3, arma::fill::eye) * 0.0};
+        arma::mat Q{arma::mat(3, 3, arma::fill::eye)};
         /// \brief the estimated combined state vector
-        arma::mat estimated_xi{arma::mat(2*n+3, 1, arma::fill::zeros)};
+        arma::mat estimated_xi{arma::colvec(2*n+3, arma::fill::zeros)};
         /// \brief the estimated covariance
         arma::mat estimated_covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)};
         /// \brief 
@@ -27,10 +27,9 @@ namespace turtlelib {
         /// \brief the previous twist
         Twist2D prev_twist{0.0, 0.0, 0.0};
         /// \brief the covariance matrix used for the sensor noise
-        arma::mat R{arma::mat(2, 2, arma::fill::eye) * 0.0};
+        arma::mat R{arma::mat(2, 2, arma::fill::eye)};
         /// \brief the landmarks that were seen
         std::unordered_set<double> landmarks;
-        // arma::mat K;
 
         public:
             /// \brief create an EKF object
@@ -74,7 +73,9 @@ namespace turtlelib {
             // \return the predicted x, y, and theta of the configuration
             Config get_predicted_configuration();
 
-            arma::mat get_H();
+            // arma::mat get_covariance();
+
+            arma::mat covariance;
     };
 }
 

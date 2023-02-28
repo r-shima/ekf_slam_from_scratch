@@ -132,7 +132,7 @@ private:
   void broadcast_map_to_odom()
   {
     turtlelib::Config green_robot = ekf_.get_predicted_configuration();
-    RCLCPP_INFO_STREAM(get_logger(), "x: " << green_robot.x << " y: " << green_robot.y << " theta: " << green_robot.theta);
+    // RCLCPP_INFO_STREAM(get_logger(), "x: " << green_robot.x << " y: " << green_robot.y << " theta: " << green_robot.theta);
     turtlelib::Transform2D T_mr{turtlelib::Vector2D{green_robot.x, green_robot.y},
       green_robot.theta};
     turtlelib::Transform2D T_or{turtlelib::Vector2D{diff_drive_.configuration().x,
@@ -235,8 +235,8 @@ private:
       {
         ekf_.update(landmarks.markers.at(i).pose.position.x,
           landmarks.markers.at(i).pose.position.y, i);
-        // arma::mat H = ekf_.get_H();
-        // RCLCPP_INFO_STREAM(get_logger(), "H: " << H.n_rows << ", " << H.n_cols);
+        // arma::mat covariance = ekf_.get_covariance();
+        RCLCPP_INFO_STREAM(get_logger(), " "<< std::endl << ekf_.covariance << std::endl);
       }
     }
   }
