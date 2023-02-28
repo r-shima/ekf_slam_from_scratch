@@ -225,16 +225,20 @@ private:
   }
 
   void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg) {
-    ekf_.predict(turtlelib::Twist2D{diff_drive_.configuration().theta, diff_drive_.configuration().x, diff_drive_.configuration().y});
+    ekf_.predict(turtlelib::Twist2D{diff_drive_.configuration().theta,
+      diff_drive_.configuration().x, diff_drive_.configuration().y});
 
-    // visualization_msgs::msg::MarkerArray landmarks = msg;
-    // for (size_t i = 0; i < landmarks.markers.size(); i++)
-    // {
-    //   if (landmarks.markers.at(i).action < 2)
-    //   {
-    //     ekf_.update(landmarks.markers.at(i).pose.position.x, landmarks.markers.at(i).pose.position.y, i);
-    //   }
-    // }
+    visualization_msgs::msg::MarkerArray landmarks = msg;
+    for (size_t i = 0; i < landmarks.markers.size(); i++)
+    {
+      if (landmarks.markers.at(i).action < 2)
+      {
+        ekf_.update(landmarks.markers.at(i).pose.position.x,
+          landmarks.markers.at(i).pose.position.y, i);
+        // arma::mat H = ekf_.get_H();
+        // RCLCPP_INFO_STREAM(get_logger(), "H: " << H.n_rows << ", " << H.n_cols);
+      }
+    }
   }
 
   // Declare private variables

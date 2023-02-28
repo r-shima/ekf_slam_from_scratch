@@ -21,15 +21,16 @@ namespace turtlelib {
         /// \brief the estimated combined state vector
         arma::mat estimated_xi{arma::mat(2*n+3, 1, arma::fill::zeros)};
         /// \brief the estimated covariance
-        arma::mat estimated_covariance;
+        arma::mat estimated_covariance{arma::mat(2*n+3, 2*n+3, arma::fill::zeros)};
         /// \brief 
         arma::colvec ut{arma::colvec(2*n+3, 1, arma::fill::zeros)};
         /// \brief the previous twist
         Twist2D prev_twist{0.0, 0.0, 0.0};
         /// \brief the covariance matrix used for the sensor noise
-        arma::mat R{arma::mat(2, 2, arma::fill::eye)};
+        arma::mat R{arma::mat(2, 2, arma::fill::eye) * 0.0};
         /// \brief the landmarks that were seen
         std::unordered_set<double> landmarks;
+        // arma::mat K;
 
         public:
             /// \brief create an EKF object
@@ -72,6 +73,8 @@ namespace turtlelib {
             /// \brief get the predicted robot configuration
             // \return the predicted x, y, and theta of the configuration
             Config get_predicted_configuration();
+
+            arma::mat get_H();
     };
 }
 
