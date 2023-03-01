@@ -9,6 +9,7 @@
 
     <node pkg="nuslam" exec="slam" name="slam">
         <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        <param from="$(find-pkg-share nusim)/config/basic_world.yaml"/>
         <!-- <param name="green_body_id" value="$(var green_body_id)"/>
         <param name="green_odom_id" value="$(var green_odom_id)"/> -->
         <param name="wheel_left" value="$(var wheel_left)"/>

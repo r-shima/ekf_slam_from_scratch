@@ -21,7 +21,7 @@
         <remap from="/joint_states" to="blue/joint_states"/>
     </node>
 
-    <node pkg="nuturtle_control" exec="odometry" name="odometry">
+    <node pkg="nuturtle_control" exec="odometry" name="odometry" if="$(eval '\'$(var robot)\' != \'none\'')">
         <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
         <param name="body_id" value="$(var body_id)"/>
         <param name="odom_id" value="$(var odom_id)"/>
@@ -47,6 +47,13 @@
         <arg name="use_rviz" value="false"/>
         <arg name="use_jsp" value="false"/>
     </include>
+
+    <node pkg="nusim" exec="nusim" name="nuwall" if="$(eval '\'$(var robot)\' == \'none\'')">
+        <param from="$(find-pkg-share nuturtle_description)/config/diff_params.yaml"/>
+        <param from="$(find-pkg-share nusim)/config/basic_world.yaml"/>
+        <param name="draw_only" value="true"/>
+        <remap from="/joint_states" to="blue/joint_states"/>
+    </node>
 
     <node pkg="tf2_ros" exec="static_transform_publisher" name="world_to_odom" args="0 0 0 0 0 0 1 nusim/world odom"/>
 </launch>

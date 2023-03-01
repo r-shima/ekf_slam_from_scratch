@@ -50,15 +50,18 @@ public:
     declare_parameter("green_odom_id", "green/odom");
     declare_parameter("wheel_left", "");
     declare_parameter("wheel_right", "");
+    declare_parameter("obstacles.r", 0.038);
     wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
     track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
     body_id_ = get_parameter("green_body_id").get_parameter_value().get<std::string>();
     odom_id_ = get_parameter("green_odom_id").get_parameter_value().get<std::string>();
     wheel_left_ = get_parameter("wheel_left").get_parameter_value().get<std::string>();
     wheel_right_ = get_parameter("wheel_right").get_parameter_value().get<std::string>();
+    obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
 
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     path_pub_ = create_publisher<nav_msgs::msg::Path>("green/path", 10);
+    slam_obs_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("slam_obstacles", 10);
     joint_states_sub_ = create_subscription<sensor_msgs::msg::JointState>(
       "joint_states", 10, std::bind(
         &Slam::joint_states_callback, this,
@@ -86,6 +89,7 @@ public:
     timestep_ = 0;
 
     check_params();
+    create_slam_obstacles();
   }
 
 private:
@@ -131,9 +135,6 @@ private:
   /// \returns none
   void broadcast_map_to_odom()
   {
-    turtlelib::Config green_robot = ekf_.get_configuration();
-    turtlelib::Transform2D T_mr{turtlelib::Vector2D{green_robot.x, green_robot.y},
-      green_robot.theta};
     turtlelib::Transform2D T_or{turtlelib::Vector2D{diff_drive_.configuration().x,
       diff_drive_.configuration().y}, diff_drive_.configuration().theta};
     turtlelib::Transform2D T_mo = T_mr * T_or.inv();
@@ -167,7 +168,6 @@ private:
     diff_drive_.forward_kinematics(angle_);
 
     broadcast_odom_to_body();
-
     broadcast_map_to_odom();
 
     twist_ = diff_drive_.angles_to_twist(angle_);
@@ -206,6 +206,7 @@ private:
     }
 
     path_pub_->publish(path_);
+    slam_obs_pub_->publish(slam_obs_array_);
   }
 
   /// \brief Callback function for the initial_pose. Resets the location of the odometry.
@@ -226,8 +227,6 @@ private:
   void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg) {
     ekf_.predict(turtlelib::Twist2D{diff_drive_.configuration().theta,
       diff_drive_.configuration().x, diff_drive_.configuration().y});
-    
-    // RCLCPP_INFO_STREAM(get_logger(), " " << std::endl << ekf_.xi << std::endl);
 
     visualization_msgs::msg::MarkerArray landmarks = msg;
     for (size_t i = 0; i < landmarks.markers.size(); i++)
@@ -236,21 +235,51 @@ private:
       {
         ekf_.update(landmarks.markers.at(i).pose.position.x,
           landmarks.markers.at(i).pose.position.y, i);
-        // RCLCPP_INFO_STREAM(get_logger(), " " << std::endl << ekf_.covariance << std::endl);
-        RCLCPP_INFO_STREAM(get_logger(), " " << std::endl << ekf_.xi << std::endl);
       }
+    }
+    turtlelib::Config green_robot = ekf_.get_configuration();
+    T_mr = turtlelib::Transform2D{turtlelib::Vector2D{green_robot.x, green_robot.y},
+      green_robot.theta};
+  }
+
+  void create_slam_obstacles() {
+    arma::mat xi = ekf_.get_xi();
+    int n = ekf_.get_n();
+
+    for (int i = 0; i < n; i++) {
+      double slam_obs_x = xi(2*i+3, 0);
+      double slam_obs_y = xi(2*i+4, 0);
+
+      visualization_msgs::msg::Marker marker;
+      marker.header.frame_id = "map";
+      marker.header.stamp = get_clock()->now();
+      marker.id = i;
+      marker.type = visualization_msgs::msg::Marker::CYLINDER;
+      marker.action = visualization_msgs::msg::Marker::ADD;
+      marker.pose.position.x = slam_obs_x;
+      marker.pose.position.y = slam_obs_y;
+      marker.pose.position.z = 0.125;
+      marker.scale.x = 2.0 * obstacles_r_;
+      marker.scale.y = 2.0 * obstacles_r_;
+      marker.scale.z = 0.25;
+      marker.color.r = 0.0;
+      marker.color.g = 1.0;
+      marker.color.b = 0.0;
+      marker.color.a = 1.0;
+      slam_obs_array_.markers.push_back(marker);
     }
   }
 
   // Declare private variables
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr slam_obs_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
   rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_, tf_broadcaster2_;
   rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
 
-  double wheel_radius_, track_width_;
+  double wheel_radius_, track_width_, obstacles_r_;
   std::string body_id_, odom_id_, wheel_left_, wheel_right_;
   turtlelib::DiffDrive diff_drive_;
   turtlelib::WheelAngle angle_;
@@ -263,6 +292,8 @@ private:
   int timestep_;
   turtlelib::Twist2D twist_;
   turtlelib::EKF ekf_;
+  turtlelib::Transform2D T_mr;
+  visualization_msgs::msg::MarkerArray slam_obs_array_;
 };
 
 /// \brief The main function

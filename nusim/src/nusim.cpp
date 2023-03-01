@@ -98,6 +98,7 @@ public:
     declare_parameter("lidar_num_of_samples", 360);
     declare_parameter("lidar_resolution", 1);
     declare_parameter("lidar_noise_variance", 0.01);
+    declare_parameter("draw_only", false);
     rate_ = get_parameter("rate").get_parameter_value().get<int>();
     x0_ = get_parameter("x0").get_parameter_value().get<double>();
     y0_ = get_parameter("y0").get_parameter_value().get<double>();
@@ -125,6 +126,8 @@ public:
     lidar_num_of_samples_ = get_parameter("lidar_num_of_samples").get_parameter_value().get<int>();
     lidar_resolution_ = get_parameter("lidar_resolution").get_parameter_value().get<int>();
     lidar_noise_variance_ = get_parameter("lidar_noise_variance").get_parameter_value().get<double>();
+    draw_only_ = get_parameter("draw_only").get_parameter_value().get<bool>();
+
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
     marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     wall_marker_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/walls", 10);
@@ -192,69 +195,77 @@ private:
   /// \returns none
   void timer_callback()
   {
-    auto message = std_msgs::msg::UInt64();
-    message.data = timestep_++;
-    timestep_pub_->publish(message);
+    if (draw_only_ == false)
+    {
+      auto message = std_msgs::msg::UInt64();
+      message.data = timestep_++;
+      timestep_pub_->publish(message);
 
-    geometry_msgs::msg::TransformStamped t;
-    t.header.stamp = get_clock()->now();
-    // t.header.stamp.nanosec += 5e7;
-    t.header.frame_id = "nusim/world";
-    t.child_frame_id = "red/base_footprint";
-    t.transform.translation.x = x_;
-    t.transform.translation.y = y_;
-    t.transform.translation.z = 0.0;
+      geometry_msgs::msg::TransformStamped t;
+      t.header.stamp = get_clock()->now();
+      // t.header.stamp.nanosec += 5e7;
+      t.header.frame_id = "nusim/world";
+      t.child_frame_id = "red/base_footprint";
+      t.transform.translation.x = x_;
+      t.transform.translation.y = y_;
+      t.transform.translation.z = 0.0;
 
-    tf2::Quaternion q;
-    q.setRPY(0, 0, theta_);
-    t.transform.rotation.x = q.x();
-    t.transform.rotation.y = q.y();
-    t.transform.rotation.z = q.z();
-    t.transform.rotation.w = q.w();
+      tf2::Quaternion q;
+      q.setRPY(0, 0, theta_);
+      t.transform.rotation.x = q.x();
+      t.transform.rotation.y = q.y();
+      t.transform.rotation.z = q.z();
+      t.transform.rotation.w = q.w();
 
-    tf_broadcaster_->sendTransform(t);
+      tf_broadcaster_->sendTransform(t);
 
+    //   marker_pub_->publish(marker_array_);
+    //   wall_marker_pub_->publish(wall_array_);
+
+      temp_angle_.l = new_vel_.l * dt_ * (1.0 + u_dist_(get_random()));
+      temp_angle_.r = new_vel_.r * dt_ * (1.0 + u_dist_(get_random()));
+      diff_drive_.forward_kinematics(temp_angle_);
+      x_ = diff_drive_.configuration().x;
+      y_ = diff_drive_.configuration().y;
+      theta_ = diff_drive_.configuration().theta;
+
+      angle_.l = prev_angle_.l + (new_vel_.l * dt_);
+      angle_.r = prev_angle_.r + (new_vel_.r * dt_);
+      sensor_data_.stamp = get_clock()->now();
+      sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
+      sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
+      prev_angle_.l = angle_.l;
+      prev_angle_.r = angle_.r;
+
+      sensor_data_pub_->publish(sensor_data_);
+
+      if (timestep_ % 100 == 1)
+      {
+        pose_.header.stamp = get_clock()->now();
+        pose_.header.frame_id = "nusim/world";
+        pose_.pose.position.x = x_;
+        pose_.pose.position.y = y_;
+        pose_.pose.position.z = 0.0;
+        
+        path_.header.stamp = get_clock()->now();
+        path_.header.frame_id = "nusim/world";
+        path_.poses.push_back(pose_);
+      }
+
+      path_pub_->publish(path_);
+
+      check_collision();
+    }
     marker_pub_->publish(marker_array_);
     wall_marker_pub_->publish(wall_array_);
-
-    temp_angle_.l = new_vel_.l * dt_ * (1.0 + u_dist_(get_random()));
-    temp_angle_.r = new_vel_.r * dt_ * (1.0 + u_dist_(get_random()));
-    diff_drive_.forward_kinematics(temp_angle_);
-    x_ = diff_drive_.configuration().x;
-    y_ = diff_drive_.configuration().y;
-    theta_ = diff_drive_.configuration().theta;
-
-    angle_.l = prev_angle_.l + (new_vel_.l * dt_);
-    angle_.r = prev_angle_.r + (new_vel_.r * dt_);
-    sensor_data_.stamp = get_clock()->now();
-    sensor_data_.left_encoder = angle_.l * encoder_ticks_per_rad_;
-    sensor_data_.right_encoder = angle_.r * encoder_ticks_per_rad_;
-    prev_angle_.l = angle_.l;
-    prev_angle_.r = angle_.r;
-
-    sensor_data_pub_->publish(sensor_data_);
-
-    if (timestep_ % 100 == 1)
-    {
-      pose_.header.stamp = get_clock()->now();
-      pose_.header.frame_id = "nusim/world";
-      pose_.pose.position.x = x_;
-      pose_.pose.position.y = y_;
-      pose_.pose.position.z = 0.0;
-    
-      path_.header.stamp = get_clock()->now();
-      path_.header.frame_id = "nusim/world";
-      path_.poses.push_back(pose_);
-    }
-
-    path_pub_->publish(path_);
-
-    check_collision();
   }
 
   void timer2_callback() {
-    add_fake_sensor();
-    simulate_lidar();
+    if (draw_only_ == false)
+    {
+      add_fake_sensor();
+      simulate_lidar();
+    }
   }
 
   /// \brief Callback function for the reset service. Resets the timestep and restores the initial
@@ -629,6 +640,7 @@ private:
   std::normal_distribution<> sensor_n_dist_{0.0, 0.0};
   sensor_msgs::msg::LaserScan laser_scan_;
   std::normal_distribution<> lidar_n_dist_{0.0, 0.0};
+  bool draw_only_ = false;
 };
 
 /// \brief The main function
