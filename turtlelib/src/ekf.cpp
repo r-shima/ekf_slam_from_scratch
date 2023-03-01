@@ -35,7 +35,6 @@ namespace turtlelib {
     }
 
     arma::mat EKF::calculate_At(arma::colvec twist) {
-        double theta = xi(0);
         arma::mat zero_mat1, zero_mat2, zero_mat3, mat1, mat2, I, At;
         zero_mat1 = arma::mat(3, 2*n, arma::fill::zeros);
         zero_mat2 = arma::mat(2*n, 3, arma::fill::zeros);
@@ -44,14 +43,14 @@ namespace turtlelib {
         I = arma::mat(2*n+3, 2*n+3, arma::fill::eye);
 
         if (almost_equal(twist(0), 0.0)) {
-            mat1(1, 0) = -twist(0) * sin(theta);
-            mat1(2, 0) = twist(0) * cos(theta);
+            mat1(1, 0) = -twist(1) * sin(xi(0));
+            mat1(2, 0) = twist(1) * cos(xi(0));
         }
         else {
-            mat1(1, 0) = -(twist(1) / twist(0)) * cos(theta) + (twist(1) / twist(0)) *
-                cos(theta + twist(0));
-            mat1(2, 0) = -(twist(1) / twist(0)) * sin(theta) + (twist(1) / twist(0)) *
-                sin(theta + twist(0));
+            mat1(1, 0) = -(twist(1) / twist(0)) * cos(xi(0)) + (twist(1) / twist(0)) *
+                cos(normalize_angle(xi(0) + twist(0)));
+            mat1(2, 0) = -(twist(1) / twist(0)) * sin(xi(0)) + (twist(1) / twist(0)) *
+                sin(normalize_angle(xi(0) + twist(0)));
         }
 
         mat2 = arma::join_rows(arma::join_cols(mat1, zero_mat2),
@@ -175,10 +174,13 @@ namespace turtlelib {
                 {-delta_y / d, -delta_x / d}};
         mat4 = arma::mat(2, 2*n-2*(j+1), arma::fill::zeros);
         H = arma::join_rows(mat1, mat2, mat3, mat4);
-        arma::mat K = estimated_covariance * H.t() * (H * estimated_covariance * H.t() + R).i();
         // Rj = R.submat(j, j, j+1, j+1);
-        xi = estimated_xi + K * (z - z_hat);
-        // xi(0) = normalize_angle(xi(0));
+        arma::mat K = estimated_covariance * H.t() * (H * estimated_covariance * H.t() + R).i();
+        arma::colvec z_diff = z - z_hat;
+        z_diff(1) = normalize_angle(z_diff(1));
+        xi = estimated_xi + K * z_diff;
+        xi(0) = normalize_angle(xi(0));
+        estimated_xi = xi;
         arma::mat I{2*n+3, 2*n+3, arma::fill::eye};
         covariance = (I - K * H) * estimated_covariance;
         estimated_covariance = covariance;

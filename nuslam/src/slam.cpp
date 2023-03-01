@@ -131,7 +131,7 @@ private:
   /// \returns none
   void broadcast_map_to_odom()
   {
-    turtlelib::Config green_robot = ekf_.get_predicted_configuration();
+    turtlelib::Config green_robot = ekf_.get_configuration();
     turtlelib::Transform2D T_mr{turtlelib::Vector2D{green_robot.x, green_robot.y},
       green_robot.theta};
     turtlelib::Transform2D T_or{turtlelib::Vector2D{diff_drive_.configuration().x,
@@ -226,6 +226,8 @@ private:
   void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg) {
     ekf_.predict(turtlelib::Twist2D{diff_drive_.configuration().theta,
       diff_drive_.configuration().x, diff_drive_.configuration().y});
+    
+    // RCLCPP_INFO_STREAM(get_logger(), " " << std::endl << ekf_.xi << std::endl);
 
     visualization_msgs::msg::MarkerArray landmarks = msg;
     for (size_t i = 0; i < landmarks.markers.size(); i++)
@@ -234,7 +236,8 @@ private:
       {
         ekf_.update(landmarks.markers.at(i).pose.position.x,
           landmarks.markers.at(i).pose.position.y, i);
-        RCLCPP_INFO_STREAM(get_logger(), " "<< std::endl << ekf_.covariance << std::endl);
+        // RCLCPP_INFO_STREAM(get_logger(), " " << std::endl << ekf_.covariance << std::endl);
+        RCLCPP_INFO_STREAM(get_logger(), " " << std::endl << ekf_.xi << std::endl);
       }
     }
   }

@@ -13,7 +13,7 @@ namespace turtlelib {
     /// \brief implements the Extended Kalman Filter
     class EKF {
         /// \brief the combined state vector containing the robot state and the map state
-        arma::mat xi;
+        // arma::mat xi;
         /// \brief the covariance
         // arma::mat covariance;
         /// \brief the covariance matrix used for the process noise
@@ -74,6 +74,7 @@ namespace turtlelib {
             // \return the predicted x, y, and theta of the configuration
             Config get_predicted_configuration();
 
+            arma::mat xi;
             arma::mat covariance;
     };
 }
