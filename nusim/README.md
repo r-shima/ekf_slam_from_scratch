@@ -16,5 +16,5 @@ The following parameters in `config/basic_world.yaml` can be used to change the 
     * `x_length` - the length of the arena in the world x direction
     * `y_length` - the length of the arena in the world y direction
 
-
+The parameters in `nuturtle_description/config/diff_params.yaml` can also be used to change the simulator settings. Please see the `nuturtle_description` package for a list of parameters.
 ![](images/nusim1.png)

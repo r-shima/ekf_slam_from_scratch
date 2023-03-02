@@ -3,12 +3,13 @@ A library for handling transformations in SE(2) and other turtlebot-related math
 
 # Components
 - rigid2d - Handles 2D rigid body transformations
-- frame_main - Perform some rigid body computations based on user input
+- frame_main - Performs some rigid body computations based on user input
 - diff_drive - Models the kinematics of a differential drive robot with a given wheel track and wheel radius
+- ekf - Implements Extended Kalman Filter
 
 # Conceptual Questions
-1. We need to be able to ~normalize~ Vector2D objects (i.e., find the unit vector in the direction of a given Vector2D):
-   - Propose three different designs for implementing the ~normalize~ functionality
+1. We need to be able to normalize Vector2D objects (i.e., find the unit vector in the direction of a given Vector2D):
+   - Propose three different designs for implementing the normalize functionality
 
      1. Include it as an independent function
      2. Put it in a class or struct as a member function
