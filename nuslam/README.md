@@ -11,4 +11,5 @@ The parameters in `nuturtle_description/config/diff_params.yaml` can be used to 
 ![](images/slam.png)
 ## Video
 Below is a video of the robot moving in a closed path in RViz with several landmarks.
+
 [Alt-Text](https://user-images.githubusercontent.com/113070827/222328189-ac7f5df1-a594-42dd-954b-b6a3e2f50934.webm)
