@@ -1,5 +1,5 @@
 /// \file
-/// \brief This node publishes odometry messages and the odometry transform
+/// \brief This node handles Extended Kalman Filter SLAM for the green robot in simulation.
 ///
 /// PARAMETERS:
 ///     wheel_radius (double): the radius of the wheels
@@ -8,10 +8,17 @@
 ///     odom_id (std::string): the name of the odometry frame
 ///     wheel_left (std::string): the name of the left wheel joint
 ///     wheel_right (std::string): the name of the right wheel joint
+///     obstacles.r (double): the radius of the obstacles
 /// PUBLISHES:
 ///     /odom (nav_msgs::msg::Odometry): an estimate of a position and velocity in free space
+///     /green/path (nav_msgs::msg::Path): an array of poses that represents a path for the green
+///                                        robot to follow
+///     /slam/obstacles (visualization_msgs::msg::MarkerArray): the cylindrical markers that act as
+///                                                             SLAM obstacles
 /// SUBSCRIBES:
 ///     /joint_states (sensor_msgs::msg::JointState): data to describe the state of a set of joints
+///     /nusim/fake_sensor (visualization_msgs::msg::MarkerArray): the cylindrical markers that act
+///                                                                as the obstacles/landmarks
 /// SERVERS:
 ///     initial_pose (nuturtle_control::srv::InitialPose): resets the location of the odometry
 
@@ -35,7 +42,7 @@
 
 using namespace std::chrono_literals;
 
-/// \brief Computes the odometry of the robot
+/// \brief Performs Extended Kalman Filter SLAM
 class Slam : public rclcpp::Node
 {
 public:
@@ -61,7 +68,7 @@ public:
 
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     path_pub_ = create_publisher<nav_msgs::msg::Path>("green/path", 10);
-    slam_obs_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("slam_obstacles", 10);
+    slam_obs_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("~/obstacles", 10);
     joint_states_sub_ = create_subscription<sensor_msgs::msg::JointState>(
       "joint_states", 10, std::bind(
         &Slam::joint_states_callback, this,
@@ -87,6 +94,7 @@ public:
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_};
 
     timestep_ = 0;
+    landmark_seen_ = false;
 
     check_params();
     create_slam_obstacles();
@@ -106,7 +114,7 @@ private:
     }
   }
 
-  /// \brief broadcast the transform between odom and body
+  /// \brief Broadcasts the transform between odom and body
   ///
   /// \param none
   /// \returns none
@@ -128,15 +136,15 @@ private:
 
     tf_broadcaster_->sendTransform(t_);
   }
-  
-  /// \brief broadcast the transform between map and odom
+
+  /// \brief Broadcasts the transform between map and odom
   ///
   /// \param none
   /// \returns none
   void broadcast_map_to_odom()
   {
     turtlelib::Transform2D T_or{turtlelib::Vector2D{diff_drive_.configuration().x,
-      diff_drive_.configuration().y}, diff_drive_.configuration().theta};
+        diff_drive_.configuration().y}, diff_drive_.configuration().theta};
     turtlelib::Transform2D T_mo = T_mr * T_or.inv();
 
     map_odom_.header.stamp = get_clock()->now();
@@ -157,7 +165,8 @@ private:
   }
 
   /// \brief Callback function for the subscriber that subscribes to sensor_msgs/msg/JointState.
-  /// Updates the internal odometry state, broadcasts the transform, and publishes odometry.
+  /// Updates the internal odometry state, broadcasts the transform, publishes odometry and path,
+  /// and creates SLAM obstacles.
   ///
   /// \param msg - JointState object
   /// \returns none
@@ -192,21 +201,21 @@ private:
     prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
 
     timestep_++;
-    if (timestep_ % 100 == 1)
-    {
+    if (timestep_ % 100 == 1) {
       pose_.header.stamp = get_clock()->now();
       pose_.header.frame_id = odom_id_;
       pose_.pose.position.x = diff_drive_.configuration().x;
       pose_.pose.position.y = diff_drive_.configuration().y;
       pose_.pose.position.z = 0.0;
-    
+
       path_.header.stamp = get_clock()->now();
       path_.header.frame_id = odom_id_;
       path_.poses.push_back(pose_);
     }
 
     path_pub_->publish(path_);
-    slam_obs_pub_->publish(slam_obs_array_);
+
+    create_slam_obstacles();
   }
 
   /// \brief Callback function for the initial_pose. Resets the location of the odometry.
@@ -224,16 +233,23 @@ private:
     diff_drive_ = turtlelib::DiffDrive{wheel_radius_, track_width_, config_};
   }
 
-  void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg) {
-    ekf_.predict(turtlelib::Twist2D{diff_drive_.configuration().theta,
-      diff_drive_.configuration().x, diff_drive_.configuration().y});
+  /// \brief Callback function for the subscriber that subscribes to
+  /// visualization_msgs/msg/MarkerArray. It performs the prediction and update steps for the
+  /// Extended Kalman Filter.
+  ///
+  /// \param msg - MarkerArray object
+  /// \returns none
+  void fake_sensor_callback(const visualization_msgs::msg::MarkerArray & msg)
+  {
+    ekf_.predict(
+      turtlelib::Twist2D{diff_drive_.configuration().theta,
+        diff_drive_.configuration().x, diff_drive_.configuration().y});
 
     visualization_msgs::msg::MarkerArray landmarks = msg;
-    for (size_t i = 0; i < landmarks.markers.size(); i++)
-    {
-      if (landmarks.markers.at(i).action < 2)
-      {
-        ekf_.update(landmarks.markers.at(i).pose.position.x,
+    for (size_t i = 0; i < landmarks.markers.size(); i++) {
+      if (landmarks.markers.at(i).action < 2) {
+        ekf_.update(
+          landmarks.markers.at(i).pose.position.x,
           landmarks.markers.at(i).pose.position.y, i);
       }
     }
@@ -242,31 +258,41 @@ private:
       green_robot.theta};
   }
 
-  void create_slam_obstacles() {
-    arma::mat xi = ekf_.get_xi();
-    int n = ekf_.get_n();
+  /// \brief Creates markers for the SLAM obstacles, adds them to a marker array, and publishes it
+  ///
+  /// \param none
+  /// \returns none
+  void create_slam_obstacles()
+  {
+    arma::colvec xi = ekf_.get_xi();
 
-    for (int i = 0; i < n; i++) {
-      double slam_obs_x = xi(2*i+3, 0);
-      double slam_obs_y = xi(2*i+4, 0);
+    for (auto i = 3; i < static_cast<int>(xi.size()); i += 2) {
+      if (xi(i) != 0.0) {
+        double slam_obs_x = xi(i);
+        double slam_obs_y = xi(i + 1);
 
-      visualization_msgs::msg::Marker marker;
-      marker.header.frame_id = "map";
-      marker.header.stamp = get_clock()->now();
-      marker.id = i;
-      marker.type = visualization_msgs::msg::Marker::CYLINDER;
-      marker.action = visualization_msgs::msg::Marker::ADD;
-      marker.pose.position.x = slam_obs_x;
-      marker.pose.position.y = slam_obs_y;
-      marker.pose.position.z = 0.125;
-      marker.scale.x = 2.0 * obstacles_r_;
-      marker.scale.y = 2.0 * obstacles_r_;
-      marker.scale.z = 0.25;
-      marker.color.r = 0.0;
-      marker.color.g = 1.0;
-      marker.color.b = 0.0;
-      marker.color.a = 1.0;
-      slam_obs_array_.markers.push_back(marker);
+        visualization_msgs::msg::Marker marker;
+        marker.header.frame_id = "map";
+        marker.header.stamp = get_clock()->now();
+        marker.id = i;
+        marker.type = visualization_msgs::msg::Marker::CYLINDER;
+        marker.action = visualization_msgs::msg::Marker::ADD;
+        marker.pose.position.x = slam_obs_x;
+        marker.pose.position.y = slam_obs_y;
+        marker.pose.position.z = 0.125;
+        marker.scale.x = 2.0 * obstacles_r_;
+        marker.scale.y = 2.0 * obstacles_r_;
+        marker.scale.z = 0.25;
+        marker.color.r = 0.0;
+        marker.color.g = 1.0;
+        marker.color.b = 0.0;
+        marker.color.a = 1.0;
+        slam_obs_array_.markers.push_back(marker);
+        landmark_seen_ = true;
+      }
+      if (landmark_seen_ == true) {
+        slam_obs_pub_->publish(slam_obs_array_);
+      }
     }
   }
 
@@ -294,6 +320,7 @@ private:
   turtlelib::EKF ekf_;
   turtlelib::Transform2D T_mr;
   visualization_msgs::msg::MarkerArray slam_obs_array_;
+  bool landmark_seen_;
 };
 
 /// \brief The main function

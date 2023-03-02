@@ -94,7 +94,7 @@ private:
     }
   }
 
-  /// \brief broadcast the transform between odom and body
+  /// \brief Broadcasts the transform between odom and body
   ///
   /// \param none
   /// \returns none
@@ -152,14 +152,13 @@ private:
     prev_angle_.position = {msg.position.at(0), msg.position.at(1)};
 
     timestep_++;
-    if (timestep_ % 100 == 1)
-    {
+    if (timestep_ % 100 == 1) {
       pose_.header.stamp = get_clock()->now();
       pose_.header.frame_id = odom_id_;
       pose_.pose.position.x = diff_drive_.configuration().x;
       pose_.pose.position.y = diff_drive_.configuration().y;
       pose_.pose.position.z = 0.0;
-    
+
       path_.header.stamp = get_clock()->now();
       path_.header.frame_id = odom_id_;
       path_.poses.push_back(pose_);

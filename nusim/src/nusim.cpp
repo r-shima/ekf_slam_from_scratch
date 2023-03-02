@@ -1,6 +1,7 @@
 /// \file
 /// \brief This node displays a red turtlebot in a simulated environment with cylindrical obstacles
-/// and walls. It also allows the robot to move according to simulated kinematics.
+/// and walls. It allows the robot to move according to simulated kinematics, adds a fake sensor,
+/// and simulates the lidar.
 ///
 /// PARAMETERS:
 ///     rate (int): a frequency used to run the main loop
@@ -17,16 +18,33 @@
 ///     motor_cmd_max (int): the max motor command
 ///     motor_cmd_per_rad_sec (double): the motor command "tick"
 ///     encoder_ticks_per_rad (double): the number of encoder "ticks" per radian
-///     collision_radius (double): radius used for collision detection
+///     collision_radius (double): the radius used for collision detection
+///     input_noise (double): the variance of Gaussian noise
+///     slip_fraction (double): the slip fraction used for the wheels
+///     basic_sensor_variance (double): the variance of Gaussian noise for the sensor
+///     max_range (double): the detection radius of the robot
+///     lidar_min_range (double): the minimum range of the lidar
+///     lidar_max_range (double): the maximum range of the lidar
+///     lidar_angle_increment (double): the angle increment of the lidar
+///     lidar_num_of_samples (int): the number of samples of the lidar
+///     lidar_resolution (int): the resolution of the lidar
+///     lidar_noise_variance (double): the variance of Gaussian noise for the lidar
+///     draw_only (bool): draw the obstacles from the configuration file rather than simulating
+///                       anything
 /// PUBLISHES:
 ///     /nusim/timestep (std_msgs::msg::UInt64): the timestep for the simulation
 ///     /nusim/obstacles (visualization_msgs::msg::MarkerArray): cylinderical markers that act as
 ///                                                              the obstacles
 ///     /nusim/walls (visualization_msgs::msg::MarkerArray): walls used to create an arena
 ///     /red/sensor_data (nuturtlebot_msgs::msg::SensorData): sensor data
+///     /red/path (nav_msgs::msg::Path): an array of poses that represents a path for the red robot
+///                                      to follow
+///     /nusim/fake_sensor (visualization_msgs::msg::MarkerArray): the cylindrical markers that act
+///                                                                as the obstacles/landmarks
+///     /laser_scan (sensor_msgs::msg::LaserScan): laser points used to simulate the lidar
 /// SUBSCRIBES:
 ///     /red/wheel_cmd (nuturtlebot_msgs::msg::WheelCommands): left and right wheel velocity in
-///                                                           "motor command units"
+///                                                            "motor command units"
 /// SERVERS:
 ///     reset (std_srvs::srv::Empty): restores the initial state of the simulation and the robot's
 ///                                   initial location
@@ -55,12 +73,12 @@
 
 std::mt19937 & get_random()
 {
-     // static variables inside a function are created once and persist for the remainder of the program
-     static std::random_device rd{}; 
-     static std::mt19937 mt{rd()};
-     // we return a reference to the pseudo-random number generator object. This is always the
-     // same object every time get_random is called
-     return mt;
+  // static variables inside a function are created once and persist for the remainder of the program
+  static std::random_device rd{};
+  static std::mt19937 mt{rd()};
+  // we return a reference to the pseudo-random number generator object. This is always the
+  // same object every time get_random is called
+  return mt;
 }
 
 /// \brief Creates a simulation environment for the turtlebot
@@ -91,7 +109,7 @@ public:
     declare_parameter("input_noise", 0.01);
     declare_parameter("slip_fraction", 0.01);
     declare_parameter("basic_sensor_variance", 0.01);
-    declare_parameter("max_range", 10.0);
+    declare_parameter("max_range", 0.8);
     declare_parameter("lidar_min_range", 0.11999999731779099);
     declare_parameter("lidar_max_range", 3.5);
     declare_parameter("lidar_angle_increment", 0.01745329238474369);
@@ -118,14 +136,17 @@ public:
     collision_radius_ = get_parameter("collision_radius").get_parameter_value().get<double>();
     input_noise_ = get_parameter("input_noise").get_parameter_value().get<double>();
     slip_fraction_ = get_parameter("slip_fraction").get_parameter_value().get<double>();
-    basic_sensor_variance_ = get_parameter("basic_sensor_variance").get_parameter_value().get<double>();
+    basic_sensor_variance_ =
+      get_parameter("basic_sensor_variance").get_parameter_value().get<double>();
     max_range_ = get_parameter("max_range").get_parameter_value().get<double>();
     lidar_min_range_ = get_parameter("lidar_min_range").get_parameter_value().get<double>();
     lidar_max_range_ = get_parameter("lidar_max_range").get_parameter_value().get<double>();
-    lidar_angle_increment_ = get_parameter("lidar_angle_increment").get_parameter_value().get<double>();
+    lidar_angle_increment_ =
+      get_parameter("lidar_angle_increment").get_parameter_value().get<double>();
     lidar_num_of_samples_ = get_parameter("lidar_num_of_samples").get_parameter_value().get<int>();
     lidar_resolution_ = get_parameter("lidar_resolution").get_parameter_value().get<int>();
-    lidar_noise_variance_ = get_parameter("lidar_noise_variance").get_parameter_value().get<double>();
+    lidar_noise_variance_ =
+      get_parameter("lidar_noise_variance").get_parameter_value().get<double>();
     draw_only_ = get_parameter("draw_only").get_parameter_value().get<bool>();
 
     timestep_pub_ = create_publisher<std_msgs::msg::UInt64>("~/timestep", 10);
@@ -195,8 +216,7 @@ private:
   /// \returns none
   void timer_callback()
   {
-    if (draw_only_ == false)
-    {
+    if (draw_only_ == false) {
       auto message = std_msgs::msg::UInt64();
       message.data = timestep_++;
       timestep_pub_->publish(message);
@@ -219,9 +239,6 @@ private:
 
       tf_broadcaster_->sendTransform(t);
 
-    //   marker_pub_->publish(marker_array_);
-    //   wall_marker_pub_->publish(wall_array_);
-
       temp_angle_.l = new_vel_.l * dt_ * (1.0 + u_dist_(get_random()));
       temp_angle_.r = new_vel_.r * dt_ * (1.0 + u_dist_(get_random()));
       diff_drive_.forward_kinematics(temp_angle_);
@@ -239,14 +256,13 @@ private:
 
       sensor_data_pub_->publish(sensor_data_);
 
-      if (timestep_ % 100 == 1)
-      {
+      if (timestep_ % 100 == 1) {
         pose_.header.stamp = get_clock()->now();
         pose_.header.frame_id = "nusim/world";
         pose_.pose.position.x = x_;
         pose_.pose.position.y = y_;
         pose_.pose.position.z = 0.0;
-        
+
         path_.header.stamp = get_clock()->now();
         path_.header.frame_id = "nusim/world";
         path_.poses.push_back(pose_);
@@ -260,9 +276,13 @@ private:
     wall_marker_pub_->publish(wall_array_);
   }
 
-  void timer2_callback() {
-    if (draw_only_ == false)
-    {
+  /// \brief Callback function for another timer. Adds a fake sensor and simulates the lidar.
+  ///
+  /// \param none
+  /// \returns none
+  void timer2_callback()
+  {
+    if (draw_only_ == false) {
       add_fake_sensor();
       simulate_lidar();
     }
@@ -306,10 +326,10 @@ private:
   void wheel_cmd_callback(const nuturtlebot_msgs::msg::WheelCommands & msg)
   {
     if (msg.left_velocity != 0) {
-        left_noise_ = n_dist_(get_random());
+      left_noise_ = n_dist_(get_random());
     }
     if (msg.right_velocity != 0) {
-        right_noise_ = n_dist_(get_random());
+      right_noise_ = n_dist_(get_random());
     }
 
     new_vel_.l = static_cast<double>(msg.left_velocity) * motor_cmd_per_rad_sec_ + left_noise_;
@@ -390,6 +410,10 @@ private:
     }
   }
 
+  /// \brief Adds a fake sensor that determines the relative (x, y) locations of the obstacles
+  ///
+  /// \param none
+  /// \returns none
   void add_fake_sensor()
   {
     turtlelib::Vector2D vec = {diff_drive_.configuration().x, diff_drive_.configuration().y};
@@ -411,8 +435,7 @@ private:
 
       if (std::sqrt(std::pow(v_ro.x, 2) + std::pow(v_ro.y, 2)) > max_range_) {
         sensor_marker.action = visualization_msgs::msg::Marker::DELETE;
-      }
-      else {
+      } else {
         sensor_marker.action = visualization_msgs::msg::Marker::ADD;
       }
 
@@ -431,12 +454,23 @@ private:
     fake_sensor_pub_->publish(sensor_array);
   }
 
+  /// \brief Calculates the distance between two points
+  ///
+  /// \param x1 - x-coordinate of the first point
+  /// \param x2 - x-coordinate of the second point
+  /// \param y1 - y-coordinate of the first point
+  /// \param y2 - y-coordinate of the second point
+  /// \return the distance between two points
   double calculate_distance(double x1, double x2, double y1, double y2)
   {
     double distance = std::sqrt(std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2));
     return distance;
   }
 
+  /// \brief Checks for collision with the obstacles
+  ///
+  /// \param none
+  /// \returns none
   void check_collision()
   {
     turtlelib::Vector2D center_to_center, normalized_vec;
@@ -444,15 +478,16 @@ private:
     turtlelib::Config config_after;
 
     for (size_t i = 0; i < obstacles_x_.size(); i++) {
-      distance = calculate_distance(diff_drive_.configuration().x, obstacles_x_.at(i),
+      distance = calculate_distance(
+        diff_drive_.configuration().x, obstacles_x_.at(i),
         diff_drive_.configuration().y, obstacles_y_.at(i));
-      if (distance < collision_radius_ + obstacles_r_)
-      {
+      if (distance < collision_radius_ + obstacles_r_) {
         center_to_center.x = {diff_drive_.configuration().x - obstacles_x_.at(i)};
         center_to_center.y = {diff_drive_.configuration().y - obstacles_y_.at(i)};
         normalized_vec = turtlelib::normalize_vector(center_to_center);
         travel_distance = collision_radius_ + obstacles_r_ -
-          calculate_distance(diff_drive_.configuration().x, obstacles_x_.at(i),
+          calculate_distance(
+          diff_drive_.configuration().x, obstacles_x_.at(i),
           diff_drive_.configuration().y, obstacles_y_.at(i));
         config_after.x = diff_drive_.configuration().x + travel_distance * normalized_vec.x;
         config_after.y = diff_drive_.configuration().y + travel_distance * normalized_vec.y;
@@ -462,15 +497,19 @@ private:
     }
   }
 
+  /// \brief Simulates the lidar by checking if the laser points intersect with the obstacles and
+  /// the walls
+  ///
+  /// \param none
+  /// \returns none
   void simulate_lidar()
   {
     laser_scan_.header.stamp = get_clock()->now();
-    // laser_scan_.header.stamp.nanosec -= 2e8;
     laser_scan_.header.frame_id = "red/base_scan";
     laser_scan_.angle_min = 0.0;
     laser_scan_.angle_max = 6.2657318115234375;
     laser_scan_.angle_increment = lidar_angle_increment_;
-    laser_scan_.time_increment = 0.0; // 0.0005574136157520115;
+    laser_scan_.time_increment = 0.0;
     laser_scan_.scan_time = 0.20066890120506287;
     laser_scan_.range_min = lidar_min_range_;
     laser_scan_.range_max = lidar_max_range_;
@@ -483,9 +522,11 @@ private:
       double chosen_distance = 1000.0;
       double min_distance = 1000.0;
       for (size_t j = 0; j < obstacles_x_.size(); j++) {
-        max_x = diff_drive_.configuration().x + lidar_max_range_ * cos(i * lidar_angle_increment_ +
+        max_x = diff_drive_.configuration().x + lidar_max_range_ * cos(
+          i * lidar_angle_increment_ +
           diff_drive_.configuration().theta);
-        max_y = diff_drive_.configuration().y + lidar_max_range_ * sin(i * lidar_angle_increment_ + 
+        max_y = diff_drive_.configuration().y + lidar_max_range_ * sin(
+          i * lidar_angle_increment_ +
           diff_drive_.configuration().theta);
         slope = (max_y - diff_drive_.configuration().y) / (max_x - diff_drive_.configuration().x);
         alpha = diff_drive_.configuration().y - slope * diff_drive_.configuration().x -
@@ -499,68 +540,76 @@ private:
           double wall1_x = walls_x_length_ / 2;
           double wall1_y = slope * (wall1_x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
-          double wall1_distance = calculate_distance(wall1_x, diff_drive_.configuration().x, wall1_y,
+          double wall1_distance = calculate_distance(
+            wall1_x, diff_drive_.configuration().x, wall1_y,
             diff_drive_.configuration().y);
-      
+
           double wall2_x = -walls_x_length_ / 2;
           double wall2_y = slope * (wall2_x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
-          double wall2_distance = calculate_distance(wall2_x, diff_drive_.configuration().x, wall2_y,
+          double wall2_distance = calculate_distance(
+            wall2_x, diff_drive_.configuration().x, wall2_y,
             diff_drive_.configuration().y);
 
           double wall3_y = walls_y_length_ / 2;
           double wall3_x = (wall3_y - diff_drive_.configuration().y) / slope +
             diff_drive_.configuration().x;
-          double wall3_distance = calculate_distance(wall3_x, diff_drive_.configuration().x, wall3_y,
+          double wall3_distance = calculate_distance(
+            wall3_x, diff_drive_.configuration().x, wall3_y,
             diff_drive_.configuration().y);
 
           double wall4_y = -walls_y_length_ / 2;
           double wall4_x = (wall4_y - diff_drive_.configuration().y) / slope +
             diff_drive_.configuration().x;
-          double wall4_distance = calculate_distance(wall4_x, diff_drive_.configuration().x, wall4_y,
+          double wall4_distance = calculate_distance(
+            wall4_x, diff_drive_.configuration().x, wall4_y,
             diff_drive_.configuration().y);
 
-          if ((wall1_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
-            > 0 && (wall1_y - diff_drive_.configuration().y) / (max_y -
-            diff_drive_.configuration().y) > 0) {
+          if ((wall1_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x) >
+            0 && (wall1_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0)
+          {
             if (wall1_distance < chosen_distance) {
-                chosen_distance = wall1_distance;
+              chosen_distance = wall1_distance;
             }
           }
-          if ((wall2_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
-            > 0 && (wall2_y - diff_drive_.configuration().y) / (max_y -
-            diff_drive_.configuration().y) > 0) {
+          if ((wall2_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x) >
+            0 && (wall2_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0)
+          {
             if (wall2_distance < chosen_distance) {
-                chosen_distance = wall2_distance;
+              chosen_distance = wall2_distance;
             }
           }
-          if ((wall3_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
-            > 0 && (wall3_y - diff_drive_.configuration().y) / (max_y -
-            diff_drive_.configuration().y) > 0) {
+          if ((wall3_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x) >
+            0 && (wall3_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0)
+          {
             if (wall3_distance < chosen_distance) {
-                chosen_distance = wall3_distance;
+              chosen_distance = wall3_distance;
             }
           }
-          if ((wall4_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x)
-            > 0 && (wall4_y - diff_drive_.configuration().y) / (max_y -
-            diff_drive_.configuration().y) > 0) {
+          if ((wall4_x - diff_drive_.configuration().x) / (max_x - diff_drive_.configuration().x) >
+            0 && (wall4_y - diff_drive_.configuration().y) / (max_y -
+            diff_drive_.configuration().y) > 0)
+          {
             if (wall4_distance < chosen_distance) {
-                chosen_distance = wall4_distance;
+              chosen_distance = wall4_distance;
             }
           }
-        }
-        else if (determinant == 0.0) {
+        } else if (determinant == 0.0) {
           obs_intersect1.x = -b / (2 * a);
           obs_intersect1.y = slope * (obs_intersect1.x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
           if ((obs_intersect1.x - diff_drive_.configuration().x) / (max_x -
             diff_drive_.configuration().x) > 0 && (obs_intersect1.y -
-            diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0) {
-            chosen_distance = calculate_distance(obs_intersect1.x, diff_drive_.configuration().x,
-            obs_intersect1.y, diff_drive_.configuration().y);
+            diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0)
+          {
+            chosen_distance = calculate_distance(
+              obs_intersect1.x, diff_drive_.configuration().x,
+              obs_intersect1.y, diff_drive_.configuration().y);
           }
-        }
-        else {
+        } else {
           obs_intersect1.x = (-b + std::sqrt(determinant)) / (2.0 * a);
           obs_intersect1.y = slope * (obs_intersect1.x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
@@ -568,22 +617,25 @@ private:
           obs_intersect2.y = slope * (obs_intersect2.x - diff_drive_.configuration().x) +
             diff_drive_.configuration().y;
 
-          distance1 = calculate_distance(obs_intersect1.x, diff_drive_.configuration().x,
+          distance1 = calculate_distance(
+            obs_intersect1.x, diff_drive_.configuration().x,
             obs_intersect1.y, diff_drive_.configuration().y);
-          distance2 = calculate_distance(obs_intersect2.x, diff_drive_.configuration().x,
+          distance2 = calculate_distance(
+            obs_intersect2.x, diff_drive_.configuration().x,
             obs_intersect2.y, diff_drive_.configuration().y);
 
           if (distance1 < distance2) {
             if ((obs_intersect1.x - diff_drive_.configuration().x) / (max_x -
               diff_drive_.configuration().x) > 0 && (obs_intersect1.y -
-              diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0) {
+              diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0)
+            {
               chosen_distance = distance1;
             }
-          }
-          else {
+          } else {
             if ((obs_intersect2.x - diff_drive_.configuration().x) / (max_x -
               diff_drive_.configuration().x) > 0 && (obs_intersect2.y -
-              diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0) {
+              diff_drive_.configuration().y) / (max_y - diff_drive_.configuration().y) > 0)
+            {
               chosen_distance = distance2;
             }
           }

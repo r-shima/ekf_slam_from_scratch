@@ -47,6 +47,9 @@ namespace turtlelib {
         zero_mat1 = arma::mat(3, 2*n, arma::fill::zeros);
         zero_mat2 = arma::mat(2*n, 3, arma::fill::zeros);
         zero_mat3 = arma::mat(2*n, 2*n, arma::fill::zeros);
+        arma::mat Q{arma::mat(3, 3, arma::fill::eye)};
+        double Q_noise = 0.01;
+        Q *= Q_noise;
         Q_bar = arma::join_rows(arma::join_cols(Q, zero_mat2),
             arma::join_cols(zero_mat1, zero_mat3));
         arma::mat At{2*n+3, 2*n+3, arma::fill::eye};
@@ -91,8 +94,9 @@ namespace turtlelib {
         mat3(1, 1) = delta_x / d;
 
         arma::mat H = arma::join_rows(mat1, mat2, mat3, mat4);
-        // double R_noise = 0.1;
-        // R *= R_noise;
+        arma::mat R{arma::mat(2, 2, arma::fill::eye)};
+        double R_noise = 0.01;
+        R *= R_noise;
         arma::mat K = estimated_covariance * H.t() * ((H * estimated_covariance * H.t() + R)).i();
         arma::colvec z_diff = z - z_hat;
         z_diff(1) = normalize_angle(z_diff(1));
@@ -110,9 +114,5 @@ namespace turtlelib {
 
     arma::mat EKF::get_xi() {
         return xi;
-    }
-
-    int EKF::get_n() {
-        return n;
     }
 }

@@ -552,6 +552,18 @@ Visualization Manager:
         Reliability Policy: Reliable
         Value: /green/path
       Value: true
+    - Class: rviz_default_plugins/MarkerArray
+      Enabled: true
+      Name: MarkerArray
+      Namespaces:
+        "": true
+      Topic:
+        Depth: 5
+        Durability Policy: Volatile
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /slam/obstacles
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -634,5 +646,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 1200
-  X: 287
-  Y: 60
+  X: 2502
+  Y: 95
