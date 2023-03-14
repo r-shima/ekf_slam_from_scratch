@@ -644,7 +644,15 @@ private:
           min_distance = chosen_distance;
         }
       }
-      laser_scan_.ranges.at(i) = min_distance + lidar_n_dist_(get_random());
+      
+      if (min_distance > lidar_max_range_)
+      {
+        laser_scan_.ranges.at(i) = 0.0;
+      }
+      else
+      {
+        laser_scan_.ranges.at(i) = min_distance + lidar_n_dist_(get_random());
+      }
     }
     laser_scan_pub_->publish(laser_scan_);
   }

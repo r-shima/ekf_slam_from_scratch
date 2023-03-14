@@ -11,7 +11,7 @@
     basic_sensor_variance: 0.0001
     max_range: 0.8
     lidar_min_range: 0.11999999731779099
-    lidar_max_range: 3.5
+    lidar_max_range: 1.0 # 3.5
     lidar_angle_increment: 0.01745329238474369
     lidar_num_of_samples: 360
     lidar_resolution: 1
