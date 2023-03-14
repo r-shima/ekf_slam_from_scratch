@@ -15,6 +15,9 @@ public:
   : Node("landmarks")
   {
     // Initializes variables for the parameters, publisher, and subscriber
+    declare_parameter("obstacles.r", 0.038);
+    obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
+
     landmarks_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/landmarks", 10);
     clusters_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/clusters", 10);
     laser_scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>(
@@ -109,13 +112,50 @@ private:
     //     RCLCPP_INFO_STREAM(get_logger(), "Cluster after:\n" << cluster_list.at(i).at(j));
     //   }
     // }
+    
+    add_clusters(cluster_list);
   }
 
   double calculate_distance(double x1, double y1, double x2, double y2)
   {
-    double distance;
-    distance = std::sqrt(std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2));
+    double distance = std::sqrt(std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2));
     return distance;
+  }
+
+  void add_clusters(std::vector<std::vector<turtlelib::Vector2D>> cluster_list)
+  {
+    visualization_msgs::msg::MarkerArray cluster_array;
+    for (size_t i = 0; i < cluster_list.size(); i++)
+    {
+      double x_mean = 0.0;
+      double y_mean = 0.0;
+      double num_of_points = 0.0;
+      for (size_t j = 0; j < cluster_list.at(i).size(); j++)
+      {
+        x_mean += cluster_list.at(i).at(j).x;
+        y_mean += cluster_list.at(i).at(j).y;
+        num_of_points++;
+      }
+
+      visualization_msgs::msg::Marker cluster_marker;
+      cluster_marker.header.frame_id = "green/base_footprint";
+      cluster_marker.header.stamp = get_clock()->now();
+      cluster_marker.id = i;
+      cluster_marker.type = visualization_msgs::msg::Marker::CYLINDER;
+      cluster_marker.action = visualization_msgs::msg::Marker::ADD;
+      cluster_marker.pose.position.x = x_mean / num_of_points;
+      cluster_marker.pose.position.y = y_mean / num_of_points;
+      cluster_marker.pose.position.z = 0.125;
+      cluster_marker.scale.x = 2.0 * obstacles_r_;
+      cluster_marker.scale.y = 2.0 * obstacles_r_;
+      cluster_marker.scale.z = 0.25;
+      cluster_marker.color.r = 0.2;
+      cluster_marker.color.g = 0.2;
+      cluster_marker.color.b = 0.2;
+      cluster_marker.color.a = 1.0;
+      cluster_array.markers.push_back(cluster_marker);
+    }
+    clusters_pub_->publish(cluster_array);
   }
 
   // Declare private variables
@@ -123,6 +163,7 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr clusters_pub_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
 
+  double obstacles_r_;
   double threshold_;
   bool in_cluster_;
   bool wrap_around_;
