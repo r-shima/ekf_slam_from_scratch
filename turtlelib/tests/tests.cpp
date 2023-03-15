@@ -2,6 +2,7 @@
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
 #include "turtlelib/rigid2d.hpp"
 #include "turtlelib/diff_drive.hpp"
+#include "turtlelib/circle_fitting.hpp"
 #include <sstream>
 
 TEST_CASE("Inverse", "[transform]") { // Katie, Hughes
@@ -281,4 +282,42 @@ TEST_CASE("Forward Kinematics, Following Arc of a Circle", "[diff_drive]") {
     REQUIRE_THAT(d.configuration().x, Catch::Matchers::WithinAbs(2.2961005942, 1.0e-5));
     REQUIRE_THAT(d.configuration().y, Catch::Matchers::WithinAbs(-0.4567228049, 1.0e-5));
     REQUIRE_THAT(d.configuration().theta, Catch::Matchers::WithinAbs(-0.3926990817, 1.0e-5));
+}
+
+TEST_CASE("Circle Fitting Test 1", "[circle_fitting]") {
+    turtlelib::Vector2D a, b, c, d, e, f;
+    a.x = 1.0;
+    a.y = 7.0;
+    b.x = 2.0;
+    b.y = 6.0;
+    c.x = 5.0;
+    c.y = 8.0;
+    d.x = 7.0;
+    d.y = 7.0;
+    e.x = 9.0;
+    e.y = 5.0;
+    f.x = 3.0;
+    f.y = 7.0;
+    std::vector<turtlelib::Vector2D> cluster{a, b, c, d, e, f};
+    turtlelib::Circle circle = turtlelib::fit_circle(cluster);
+    REQUIRE_THAT(circle.x, Catch::Matchers::WithinAbs(4.615482, 1.0e-4));
+    REQUIRE_THAT(circle.y, Catch::Matchers::WithinAbs(2.807354, 1.0e-4));
+    REQUIRE_THAT(circle.r, Catch::Matchers::WithinAbs(4.8275, 1.0e-4));
+}
+
+TEST_CASE("Circle Fitting Test 2", "[circle_fitting]") {
+    turtlelib::Vector2D a, b, c, d;
+    a.x = -1.0;
+    a.y = 0.0;
+    b.x = -0.3;
+    b.y = -0.06;
+    c.x = 0.3;
+    c.y = 0.1;
+    d.x = 1.0;
+    d.y = 0.0;
+    std::vector<turtlelib::Vector2D> cluster{a, b, c, d};
+    turtlelib::Circle circle = turtlelib::fit_circle(cluster);
+    REQUIRE_THAT(circle.x, Catch::Matchers::WithinAbs(0.4908357, 1.0e-4));
+    REQUIRE_THAT(circle.y, Catch::Matchers::WithinAbs(-22.15212, 1.0e-4));
+    REQUIRE_THAT(circle.r, Catch::Matchers::WithinAbs(22.17979, 1.0e-4));
 }
