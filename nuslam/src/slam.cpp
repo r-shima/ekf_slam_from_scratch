@@ -265,6 +265,7 @@ private:
   void create_slam_obstacles()
   {
     arma::colvec xi = ekf_.get_xi();
+    visualization_msgs::msg::MarkerArray slam_obs_array;
 
     for (auto i = 3; i < static_cast<int>(xi.size()); i += 2) {
       if (xi(i) != 0.0) {
@@ -287,11 +288,11 @@ private:
         marker.color.g = 1.0;
         marker.color.b = 0.0;
         marker.color.a = 1.0;
-        slam_obs_array_.markers.push_back(marker);
+        slam_obs_array.markers.push_back(marker);
         landmark_seen_ = true;
       }
       if (landmark_seen_ == true) {
-        slam_obs_pub_->publish(slam_obs_array_);
+        slam_obs_pub_->publish(slam_obs_array);
       }
     }
   }
@@ -319,7 +320,6 @@ private:
   turtlelib::Twist2D twist_;
   turtlelib::EKF ekf_;
   turtlelib::Transform2D T_mr;
-  visualization_msgs::msg::MarkerArray slam_obs_array_;
   bool landmark_seen_;
 };
 

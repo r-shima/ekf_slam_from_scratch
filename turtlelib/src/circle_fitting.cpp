@@ -34,17 +34,12 @@ namespace turtlelib {
             Z(i, 1) = xi;
             Z(i, 2) = yi;
             Z(i, 3) = 1.0;
-            // Z.insert_rows(i, arma::rowvec{zi, xi, yi, 1.0});
         }
-
-        // std::cout << "Z\n" << Z << std::endl;
 
         z_mean = z_sum / cluster.size();
 
         arma::mat M{cluster.size(), 4, arma::fill::zeros};
         M = (Z.t() * Z) / cluster.size();
-
-        // std::cout << "M\n" << M << std::endl;
 
         arma::mat H{4, 4, arma::fill::zeros};
         H(0, 0) = 8.0 * z_mean;
@@ -89,11 +84,6 @@ namespace turtlelib {
             A(2) = V(2, 3);
             A(3) = V(3, 3);
         }
-
-        // std::cout << "U\n" << U << std::endl;
-        // std::cout << "s\n" << s << std::endl;
-        // std::cout << "V\n" << V << std::endl;
-        // std::cout << "A\n" << A << std::endl;
 
         double a = -A(1) / (2 * A(0));
         double b = -A(2) / (2 * A(0));

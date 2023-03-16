@@ -7,6 +7,7 @@
 #include "turtlelib/diff_drive.hpp"
 #include "visualization_msgs/msg/marker_array.hpp"
 #include "sensor_msgs/msg/laser_scan.hpp"
+#include "turtlelib/circle_fitting.hpp"
 
 class Landmarks : public rclcpp::Node
 {
@@ -20,6 +21,7 @@ public:
 
     landmarks_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/landmarks", 10);
     clusters_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/clusters", 10);
+    circles_pub_ = create_publisher<visualization_msgs::msg::MarkerArray>("/circles", 10);
     laser_scan_sub_ = create_subscription<sensor_msgs::msg::LaserScan>(
       "/laser_scan", 10, std::bind(
         &Landmarks::laser_scan_callback, this,
@@ -68,7 +70,7 @@ private:
             cluster.push_back(point2);
             num++;
           }
-          else if (num >= 2)
+          else if (num >= 3)
           {
             in_cluster_ = false;
             cluster_list.push_back(cluster);
@@ -114,6 +116,7 @@ private:
     // }
     
     add_clusters(cluster_list);
+    detect_circle(cluster_list);
   }
 
   double calculate_distance(double x1, double y1, double x2, double y2)
@@ -158,9 +161,51 @@ private:
     clusters_pub_->publish(cluster_array);
   }
 
+  void detect_circle(std::vector<std::vector<turtlelib::Vector2D>> cluster_list)
+  {
+    std::vector<turtlelib::Circle> detected_circle_list;
+    for (size_t i = 0; i < cluster_list.size(); i++)
+    {
+      turtlelib::Circle circle = turtlelib::fit_circle(cluster_list.at(i));
+      if (circle.r > 0.01 && circle.r < 0.1)
+      {
+        // RCLCPP_INFO_STREAM(get_logger(), "Circle " << i << " x: " << circle.x << " y: " << circle.y << " r: " << circle.r);
+        detected_circle_list.push_back(circle);
+      }
+    }
+    add_detected_circle(detected_circle_list);
+  }
+
+  void add_detected_circle(std::vector<turtlelib::Circle> detected_circle_list)
+  {
+    visualization_msgs::msg::MarkerArray circle_array;
+    for (size_t i = 0; i < detected_circle_list.size(); i++)
+    {
+      visualization_msgs::msg::Marker circle_marker;
+      circle_marker.header.frame_id = "green/base_footprint";
+      circle_marker.header.stamp = get_clock()->now();
+      circle_marker.id = i;
+      circle_marker.type = visualization_msgs::msg::Marker::CYLINDER;
+      circle_marker.action = visualization_msgs::msg::Marker::ADD;
+      circle_marker.pose.position.x = detected_circle_list.at(i).x;
+      circle_marker.pose.position.y = detected_circle_list.at(i).y;
+      circle_marker.pose.position.z = 0.125;
+      circle_marker.scale.x = 2.0 * detected_circle_list.at(i).r;
+      circle_marker.scale.y = 2.0 * detected_circle_list.at(i).r;
+      circle_marker.scale.z = 0.25;
+      circle_marker.color.r = 0.0;
+      circle_marker.color.g = 0.0;
+      circle_marker.color.b = 1.0;
+      circle_marker.color.a = 1.0;
+      circle_array.markers.push_back(circle_marker);
+    }
+    circles_pub_->publish(circle_array);
+  }
+
   // Declare private variables
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr landmarks_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr clusters_pub_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr circles_pub_;
   rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr laser_scan_sub_;
 
   double obstacles_r_;
