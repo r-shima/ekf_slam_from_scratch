@@ -23,6 +23,7 @@ Below is a video of the robot moving in a closed path using unknown data associa
 [Alt-Text](https://user-images.githubusercontent.com/113070827/225817002-c1ebfa03-2b75-4bed-8679-1d4b44d9a25b.webm)
 
 Final pose error between the actual robot position and odometry:
+
     position:
       x: 0.00591
       y: -0.00495
@@ -34,6 +35,7 @@ Final pose error between the actual robot position and odometry:
       w: -0.00671
 
 Final pose error between the actual robot position and the SLAM estimate:
+
     position:
       x: 0.01477
       y: -0.03123
