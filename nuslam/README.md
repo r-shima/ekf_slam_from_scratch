@@ -13,7 +13,7 @@ This package implements Extended Kalman Filter SLAM with known and unknown data 
 The parameters in `nuturtle_description/config/diff_params.yaml` can be used to change the simulator settings. Please see the `nuturtle_description` package for a list of parameters.
 ## Screenshot
 ![](images/slam.png)
-## Video
+## Videos
 Below is a video of the robot moving in a closed path in RViz with several landmarks (known data association):
 
 [Alt-Text](https://user-images.githubusercontent.com/113070827/222328189-ac7f5df1-a594-42dd-954b-b6a3e2f50934.webm)
