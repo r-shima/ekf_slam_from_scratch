@@ -114,8 +114,8 @@ namespace turtlelib {
         arma::colvec z{r, phi};
 
         arma::colvec temp = estimated_xi;
-        temp(2*N+1+3) = temp(1) + r * cos(phi + temp(0));
-        temp(2*N+1+4) = temp(2) + r * sin(phi + temp(0));
+        temp(2*N+3+1) = temp(1) + r * cos(phi + temp(0));
+        temp(2*N+4+1) = temp(2) + r * sin(phi + temp(0));
         std::vector<double> distance_list;
 
         for (int i = 0; i < N+1; i++) {

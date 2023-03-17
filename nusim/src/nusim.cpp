@@ -39,8 +39,8 @@
 ///     /red/sensor_data (nuturtlebot_msgs::msg::SensorData): sensor data
 ///     /red/path (nav_msgs::msg::Path): an array of poses that represents a path for the red robot
 ///                                      to follow
-///     /nusim/fake_sensor (visualization_msgs::msg::MarkerArray): the cylindrical markers that act
-///                                                                as the obstacles/landmarks
+///     /nusim/fake_sensor (visualization_msgs::msg::MarkerArray): cylindrical markers that act as
+///                                                                the obstacles/landmarks
 ///     /laser_scan (sensor_msgs::msg::LaserScan): laser points used to simulate the lidar
 /// SUBSCRIBES:
 ///     /red/wheel_cmd (nuturtlebot_msgs::msg::WheelCommands): left and right wheel velocity in
@@ -644,13 +644,10 @@ private:
           min_distance = chosen_distance;
         }
       }
-      
-      if (min_distance > lidar_max_range_)
-      {
+
+      if (min_distance > lidar_max_range_) {
         laser_scan_.ranges.at(i) = 0.0;
-      }
-      else
-      {
+      } else {
         laser_scan_.ranges.at(i) = min_distance + lidar_n_dist_(get_random());
       }
     }

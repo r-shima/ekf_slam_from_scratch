@@ -9,16 +9,20 @@
 ///     wheel_left (std::string): the name of the left wheel joint
 ///     wheel_right (std::string): the name of the right wheel joint
 ///     obstacles.r (double): the radius of the obstacles
+///     detect_landmarks (bool): determines whether or not to use the circle detection output for
+///                              SLAM
 /// PUBLISHES:
 ///     /odom (nav_msgs::msg::Odometry): an estimate of a position and velocity in free space
 ///     /green/path (nav_msgs::msg::Path): an array of poses that represents a path for the green
 ///                                        robot to follow
-///     /slam/obstacles (visualization_msgs::msg::MarkerArray): the cylindrical markers that act as
+///     /slam/obstacles (visualization_msgs::msg::MarkerArray): cylindrical markers that act as
 ///                                                             SLAM obstacles
 /// SUBSCRIBES:
 ///     /joint_states (sensor_msgs::msg::JointState): data to describe the state of a set of joints
-///     /nusim/fake_sensor (visualization_msgs::msg::MarkerArray): the cylindrical markers that act
+///     /nusim/fake_sensor (visualization_msgs::msg::MarkerArray): cylindrical markers that act
 ///                                                                as the obstacles/landmarks
+///     /circles (visualization_msgs::msg::MarkerArray): cylindrical markers to help visualize
+///                                                      detected circles
 /// SERVERS:
 ///     initial_pose (nuturtle_control::srv::InitialPose): resets the location of the odometry
 
@@ -75,16 +79,13 @@ public:
       "joint_states", 10, std::bind(
         &Slam::joint_states_callback, this,
         std::placeholders::_1));
-    
-    if (detect_landmarks_ == false)
-    {
+
+    if (detect_landmarks_ == false) {
       fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
         "/nusim/fake_sensor", 10, std::bind(
           &Slam::fake_sensor_callback, this,
           std::placeholders::_1));
-    }
-    else
-    {
+    } else {
       circles_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
         "/circles", 10, std::bind(
           &Slam::circles_callback, this,
@@ -159,7 +160,7 @@ private:
   {
     turtlelib::Transform2D T_or{turtlelib::Vector2D{diff_drive_.configuration().x,
         diff_drive_.configuration().y}, diff_drive_.configuration().theta};
-    turtlelib::Transform2D T_mo = T_mr * T_or.inv();
+    turtlelib::Transform2D T_mo = T_mr_ * T_or.inv();
 
     map_odom_.header.stamp = get_clock()->now();
     map_odom_.header.frame_id = "map";
@@ -268,7 +269,7 @@ private:
       }
     }
     turtlelib::Config green_robot = ekf_.get_configuration();
-    T_mr = turtlelib::Transform2D{turtlelib::Vector2D{green_robot.x, green_robot.y},
+    T_mr_ = turtlelib::Transform2D{turtlelib::Vector2D{green_robot.x, green_robot.y},
       green_robot.theta};
   }
 
@@ -311,6 +312,12 @@ private:
     }
   }
 
+  /// \brief Callback function for the subscriber that subscribes to
+  /// visualization_msgs/msg/MarkerArray. It performs the prediction and update steps for the
+  /// Extended Kalman Filter. It also performs data association.
+  ///
+  /// \param msg - MarkerArray object
+  /// \returns none
   void circles_callback(const visualization_msgs::msg::MarkerArray & msg)
   {
     ekf_.predict(
@@ -318,24 +325,16 @@ private:
         diff_drive_.configuration().x, diff_drive_.configuration().y});
 
     visualization_msgs::msg::MarkerArray landmarks = msg;
-    // std::vector<size_t> index_list;
     for (size_t i = 0; i < landmarks.markers.size(); i++) {
-      size_t index = ekf_.data_association(landmarks.markers.at(i).pose.position.x,
+      size_t index = ekf_.data_association(
+        landmarks.markers.at(i).pose.position.x,
         landmarks.markers.at(i).pose.position.y);
-      RCLCPP_INFO_STREAM(get_logger(), "Index: " << index << "\n");
-      // index_list.push_back(index);
       ekf_.update(
-          landmarks.markers.at(i).pose.position.x,
-          landmarks.markers.at(i).pose.position.y, index);
+        landmarks.markers.at(i).pose.position.x,
+        landmarks.markers.at(i).pose.position.y, index);
     }
-    // for (size_t j = 0; j < index_list.size(); j++)
-    // {
-    //   ekf_.update(
-    //       landmarks.markers.at(j).pose.position.x,
-    //       landmarks.markers.at(j).pose.position.y, index_list.at(j));
-    // }
     turtlelib::Config green_robot = ekf_.get_configuration();
-    T_mr = turtlelib::Transform2D{turtlelib::Vector2D{green_robot.x, green_robot.y},
+    T_mr_ = turtlelib::Transform2D{turtlelib::Vector2D{green_robot.x, green_robot.y},
       green_robot.theta};
   }
 
@@ -362,7 +361,7 @@ private:
   int timestep_;
   turtlelib::Twist2D twist_;
   turtlelib::EKF ekf_;
-  turtlelib::Transform2D T_mr;
+  turtlelib::Transform2D T_mr_;
   bool landmark_seen_;
   bool detect_landmarks_;
 };

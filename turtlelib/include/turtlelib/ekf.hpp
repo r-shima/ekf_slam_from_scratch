@@ -59,7 +59,7 @@ namespace turtlelib {
             /// \brief update the state and uncertainty
             /// \param x - the x coordinate of the landmark
             /// \param y - the y coordinate of the landmark
-            /// \param j - the marker id
+            /// \param j - the landmark marker id
             /// \return none
             void update(double x, double y, size_t j);
 
