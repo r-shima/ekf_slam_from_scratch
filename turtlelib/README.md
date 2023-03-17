@@ -6,6 +6,7 @@ A library for handling transformations in SE(2) and other turtlebot-related math
 - frame_main - Performs some rigid body computations based on user input
 - diff_drive - Models the kinematics of a differential drive robot with a given wheel track and wheel radius
 - ekf - Implements Extended Kalman Filter
+- circle_fitting - Implements the circle fitting algorithm
 
 # Conceptual Questions
 1. We need to be able to normalize Vector2D objects (i.e., find the unit vector in the direction of a given Vector2D):

@@ -1,8 +1,10 @@
 <launch>
+    <arg name="cmd_src" default="none" description="Lets the user set it to 'circle' to start the circle node, 'teleop' to start the teleop_twist_keyboard, and 'none' to start nothing"/>
     <arg name="robot" default="nusim" description="Lets the user set it to 'nusim' to start the nusim simulator, 'localhost' to run the nodes directly from the turtlebot3, and 'none' to not launch any additional nodes"/>
     <arg name="detect_landmarks" default="true" description="Determines whether or not to use the circle detection output for SLAM"/>
 
     <include file="$(find-pkg-share nuslam)/launch/landmark_detect.launch.xml">
+        <arg name="cmd_src" value="$(var cmd_src)"/>
         <arg name="robot" value="$(var robot)"/>
         <arg name="detect_landmarks" value="$(var detect_landmarks)"/>
     </include>
