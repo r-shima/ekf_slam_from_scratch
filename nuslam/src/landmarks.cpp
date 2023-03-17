@@ -66,7 +66,6 @@ private:
 
           if (distance < threshold_)
           {
-            // RCLCPP_INFO_STREAM(get_logger(), "Indices: " << (i + num) % 360 << ", " << (i + 1 + num) % 360);
             cluster.push_back(point2);
             num++;
           }
@@ -79,7 +78,6 @@ private:
           else
           {
             in_cluster_ = false;
-            // i = i + num;
           }
 
           if (i + 1 + num >= 360) {
@@ -91,14 +89,6 @@ private:
 
     if (wrap_around_ == true)
     {
-    //   for (size_t i = 0; i < cluster_list.size(); i++)
-    //   {
-    //     for (size_t j = 0; j <cluster_list.at(i).size(); j++)
-    //     {
-    //       RCLCPP_INFO_STREAM(get_logger(), "Cluster before:\n" << cluster_list.at(i).at(j));
-    //     }
-    //   }
-
       if (cluster_list.front().back().x == cluster_list.back().back().x &&
           cluster_list.front().back().y == cluster_list.back().back().y)
       {
@@ -106,14 +96,6 @@ private:
             cluster_list.pop_back();
       }
     }
-
-    // for (size_t i = 0; i < cluster_list.size(); i++)
-    // {
-    //   for (size_t j = 0; j < cluster_list.at(i).size(); j++)
-    //   {
-    //     RCLCPP_INFO_STREAM(get_logger(), "Cluster after:\n" << cluster_list.at(i).at(j));
-    //   }
-    // }
     
     add_clusters(cluster_list);
     detect_circle(cluster_list);
@@ -169,7 +151,6 @@ private:
       turtlelib::Circle circle = turtlelib::fit_circle(cluster_list.at(i));
       if (circle.r > 0.01 && circle.r < 0.1)
       {
-        // RCLCPP_INFO_STREAM(get_logger(), "Circle " << i << " x: " << circle.x << " y: " << circle.y << " r: " << circle.r);
         detected_circle_list.push_back(circle);
       }
     }

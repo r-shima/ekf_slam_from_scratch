@@ -58,6 +58,7 @@ public:
     declare_parameter("wheel_left", "");
     declare_parameter("wheel_right", "");
     declare_parameter("obstacles.r", 0.038);
+    declare_parameter("detect_landmarks", false);
     wheel_radius_ = get_parameter("wheel_radius").get_parameter_value().get<double>();
     track_width_ = get_parameter("track_width").get_parameter_value().get<double>();
     body_id_ = get_parameter("green_body_id").get_parameter_value().get<std::string>();
@@ -65,6 +66,7 @@ public:
     wheel_left_ = get_parameter("wheel_left").get_parameter_value().get<std::string>();
     wheel_right_ = get_parameter("wheel_right").get_parameter_value().get<std::string>();
     obstacles_r_ = get_parameter("obstacles.r").get_parameter_value().get<double>();
+    detect_landmarks_ = get_parameter("detect_landmarks").get_parameter_value().get<bool>();
 
     odom_pub_ = create_publisher<nav_msgs::msg::Odometry>("odom", 10);
     path_pub_ = create_publisher<nav_msgs::msg::Path>("green/path", 10);
@@ -73,10 +75,22 @@ public:
       "joint_states", 10, std::bind(
         &Slam::joint_states_callback, this,
         std::placeholders::_1));
-    fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
-      "/nusim/fake_sensor", 10, std::bind(
-        &Slam::fake_sensor_callback, this,
-        std::placeholders::_1));
+    
+    if (detect_landmarks_ == false)
+    {
+      fake_sensor_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
+        "/nusim/fake_sensor", 10, std::bind(
+          &Slam::fake_sensor_callback, this,
+          std::placeholders::_1));
+    }
+    else
+    {
+      circles_sub_ = create_subscription<visualization_msgs::msg::MarkerArray>(
+        "/circles", 10, std::bind(
+          &Slam::circles_callback, this,
+          std::placeholders::_1));
+    }
+
     tf_broadcaster_ =
       std::make_unique<tf2_ros::TransformBroadcaster>(*this);
     tf_broadcaster2_ =
@@ -297,12 +311,41 @@ private:
     }
   }
 
+  void circles_callback(const visualization_msgs::msg::MarkerArray & msg)
+  {
+    ekf_.predict(
+      turtlelib::Twist2D{diff_drive_.configuration().theta,
+        diff_drive_.configuration().x, diff_drive_.configuration().y});
+
+    visualization_msgs::msg::MarkerArray landmarks = msg;
+    // std::vector<size_t> index_list;
+    for (size_t i = 0; i < landmarks.markers.size(); i++) {
+      size_t index = ekf_.data_association(landmarks.markers.at(i).pose.position.x,
+        landmarks.markers.at(i).pose.position.y);
+      RCLCPP_INFO_STREAM(get_logger(), "Index: " << index << "\n");
+      // index_list.push_back(index);
+      ekf_.update(
+          landmarks.markers.at(i).pose.position.x,
+          landmarks.markers.at(i).pose.position.y, index);
+    }
+    // for (size_t j = 0; j < index_list.size(); j++)
+    // {
+    //   ekf_.update(
+    //       landmarks.markers.at(j).pose.position.x,
+    //       landmarks.markers.at(j).pose.position.y, index_list.at(j));
+    // }
+    turtlelib::Config green_robot = ekf_.get_configuration();
+    T_mr = turtlelib::Transform2D{turtlelib::Vector2D{green_robot.x, green_robot.y},
+      green_robot.theta};
+  }
+
   // Declare private variables
   rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_pub_;
   rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr slam_obs_pub_;
   rclcpp::Subscription<sensor_msgs::msg::JointState>::SharedPtr joint_states_sub_;
   rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr fake_sensor_sub_;
+  rclcpp::Subscription<visualization_msgs::msg::MarkerArray>::SharedPtr circles_sub_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_, tf_broadcaster2_;
   rclcpp::Service<nuturtle_control::srv::InitialPose>::SharedPtr initial_pose_;
 
@@ -321,6 +364,7 @@ private:
   turtlelib::EKF ekf_;
   turtlelib::Transform2D T_mr;
   bool landmark_seen_;
+  bool detect_landmarks_;
 };
 
 /// \brief The main function

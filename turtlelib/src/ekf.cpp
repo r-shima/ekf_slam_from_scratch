@@ -108,6 +108,71 @@ namespace turtlelib {
         estimated_covariance = covariance;
     }
 
+    size_t EKF::data_association(double x, double y) {
+        double r = std::sqrt(std::pow(x, 2) + std::pow(y, 2));
+        double phi = atan2(y, x);
+        arma::colvec z{r, phi};
+
+        arma::colvec temp = estimated_xi;
+        temp(2*N+1+3) = temp(1) + r * cos(phi + temp(0));
+        temp(2*N+1+4) = temp(2) + r * sin(phi + temp(0));
+        std::vector<double> distance_list;
+
+        for (int i = 0; i < N+1; i++) {
+            double delta_x = temp(2*i+3) - temp(1);
+            double delta_y = temp(2*i+4) - temp(2);
+            double d = std::pow(delta_x, 2) + std::pow(delta_y, 2);
+            double r_hat = std::sqrt(d);
+            double phi_hat = normalize_angle(atan2(delta_y, delta_x) - temp(0));
+            arma::colvec z_hat{r_hat, phi_hat};
+
+            arma::mat mat1(2, 3);
+            arma::mat mat2(2, 2*i, arma::fill::zeros);
+            arma::mat mat3(2, 2);
+            arma::mat mat4(2, 2*n-2*(i+1), arma::fill::zeros);
+
+            mat1(0, 0) = 0.0;
+            mat1(0, 1) = -delta_x / std::sqrt(d);
+            mat1(0, 2) = -delta_y / std::sqrt(d);
+            mat1(1, 0) = -1.0;
+            mat1(1, 1) = delta_y / d;
+            mat1(1, 2) = -delta_x / d;
+
+            mat3(0, 0) = delta_x / std::sqrt(d);
+            mat3(0, 1) = delta_y / std::sqrt(d);
+            mat3(1, 0) = -delta_y / d;
+            mat3(1, 1) = delta_x / d;
+
+            arma::mat H = arma::join_rows(mat1, mat2, mat3, mat4);
+            arma::mat R{arma::mat(2, 2, arma::fill::eye)};
+            double R_noise = 0.01;
+            R *= R_noise;
+            arma::mat cov_k = H * estimated_covariance * H.t() + R;
+            arma::colvec z_diff = z - z_hat;
+            z_diff(1) = normalize_angle(z_diff(1));
+            arma::mat d_k = z_diff.t()  * cov_k.i() * z_diff;
+            distance_list.push_back(d_k(0));
+        }
+
+        bool is_new = true;
+        size_t min_index = N + 1;
+        double threshold = distance_list.at(distance_list.size() - 1);
+
+        for (size_t i = 0; i < distance_list.size(); i++) {
+            if (distance_list.at(i) < threshold) {
+                threshold = distance_list.at(i);
+                min_index = i;
+                is_new = false;
+            }
+        }
+
+        if (is_new == true) {
+            N++;
+        }
+
+        return min_index;
+    }
+
     Config EKF::get_configuration() {
         return {xi(1), xi(2), xi(0)};
     }

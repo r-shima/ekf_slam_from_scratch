@@ -26,6 +26,8 @@ namespace turtlelib {
         Twist2D prev_twist{0.0, 0.0, 0.0};
         /// \brief the landmarks that were seen
         std::unordered_set<double> landmarks;
+        /// \brief the number of landmarks that were seen
+        int N = 0;
 
         public:
             /// \brief create an EKF object
@@ -60,6 +62,12 @@ namespace turtlelib {
             /// \param j - the marker id
             /// \return none
             void update(double x, double y, size_t j);
+
+            /// \brief associate measurements with the proper features in the map
+            /// \param x - the x coordinate of the landmark
+            /// \param y - the y coordinate of the landmark
+            /// \return the landmark marker id
+            size_t data_association(double x, double y);
 
             /// \brief get the robot configuration
             /// \return the x, y, and theta of the configuration
