@@ -82,7 +82,7 @@ private:
           if (distance < threshold_) {
             cluster.push_back(point2);
             num++;
-          } else if (num >= 3) {
+          } else if (num >= 4) {
             in_cluster_ = false;
             cluster_list.push_back(cluster);
             i = i + num - 1;
