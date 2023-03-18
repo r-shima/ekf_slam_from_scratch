@@ -20,7 +20,7 @@ Below is a video of the robot moving in a closed path in RViz with several landm
 
 Below is a video of the robot moving in a closed path using unknown data association in RViz:
 
-[Alt-Text](https://user-images.githubusercontent.com/113070827/225817002-c1ebfa03-2b75-4bed-8679-1d4b44d9a25b.webm)
+[Alt-Text](https://user-images.githubusercontent.com/113070827/226087892-dc3bafee-23e6-4628-a25f-5297e9bb8117.webm)
 
 Final pose error between the actual robot position and odometry:
 
