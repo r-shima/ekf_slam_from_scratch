@@ -1,4 +1,4 @@
-# ME495 Sensing, Navigation and Machine Learning For Robotics
+# Extended Kalman Filter SLAM from Scratch
 * Rintaroh Shima
 * Winter 2023
 # Package List
