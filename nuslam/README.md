@@ -16,7 +16,7 @@ The parameters in `nuturtle_description/config/diff_params.yaml` can be used to 
 ## Videos
 Below is a video of the robot moving in a closed path in RViz with several landmarks (known data association):
 
-[Alt-Text](https://user-images.githubusercontent.com/113070827/222328189-ac7f5df1-a594-42dd-954b-b6a3e2f50934.webm)
+[Alt-Text](https://user-images.githubusercontent.com/113070827/227675800-a9a5f17c-7253-494e-8cb3-7b2d76bcee62.mp4)
 
 Below is a video of the robot moving in a closed path using unknown data association in RViz:
 
