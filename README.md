@@ -22,7 +22,7 @@ Cylindrical obstacles are also displayed:
 
 Below is a video of the robot moving in a closed path in RViz with several landmarks (known data association):
 
-[Alt-Text](https://user-images.githubusercontent.com/113070827/227675800-a9a5f17c-7253-494e-8cb3-7b2d76bcee62.mp4)
+[Alt-Text](https://user-images.githubusercontent.com/113070827/228314355-bcffdd45-5ceb-44ab-8ae1-e4523d558d46.mp4)
 
 Below is a video of the robot moving in a closed path using unknown data association in RViz:
 
