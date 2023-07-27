@@ -26,4 +26,4 @@ Below is a video of the robot moving in a closed path in RViz with several landm
 
 Below is a video of the robot moving in a closed path using unknown data association in RViz:
 
-[Alt-Text](https://user-images.githubusercontent.com/113070827/226087892-dc3bafee-23e6-4628-a25f-5297e9bb8117.webm)
+[Alt-Text](https://github.com/r-shima/ekf_slam_from_scratch/assets/113070827/2b6d4d40-4459-43d6-8ea6-a5668cea72b8)
