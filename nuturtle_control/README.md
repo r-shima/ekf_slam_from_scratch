@@ -10,7 +10,7 @@ The parameters in `nuturtle_description/config/diff_params.yaml` can be used to 
 # Physical Testing
 In the videos shown below, the turtlebot moves in a circle (clockwise and counterclockwise) and stops at its initial configuration in RViz and the real world.
 
-[Alt-Text](https://github.com/r-shima/ekf_slam_from_scratch/assets/113070827/3c60e36c-8529-4fab-81c6-d30e53bf7afb)
+[Alt-Text](https://github.com/r-shima/ekf_slam_from_scratch/assets/113070827/403629fc-f195-41a7-9f64-c17434092542)
 
 [Alt-Text](https://github.com/r-shima/ekf_slam_from_scratch/assets/113070827/90efad86-9014-4fc0-8beb-4c0fba5f30f4)
 
